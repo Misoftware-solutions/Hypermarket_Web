@@ -1,0 +1,32 @@
+# Dependency directories
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build artifacts
+dist/
+client/dist/
+dist-ssr/
+
+# Environment files
+.env
+server/.env
+*.env.local
+
+# Editor/OS directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / lock files
+~$*.docx
+~$*.xlsx
+~$*.pptx
+*.tmp
