@@ -218,12 +218,12 @@ INSERT INTO brands (brand_name) VALUES
 ('Tata'), ('Haldirams'), ('MTR'), ('Aashirvaad');
 
 INSERT INTO users (username, password_hash, full_name, mobile, email, role_id)
-VALUES ('admin', '$2b$10$dummyhashfordevonly1234567890', 'Admin User', '9876543210', 'admin@hypermarket.com', 1);
+VALUES ('admin', '$2b$10$U3PwoJ6uj8GQc2JXIuEke.y7hwfTuOMNioE37HZWXGEdYJUZWbTGu', 'Admin User', '9876543210', 'admin@hypermarket.com', 1);
 
 INSERT INTO customers (customer_name, mobile, email, password_hash, referral_code) VALUES
-('Rahul Sharma', '9876543210', 'rahul@email.com', '$2b$10$dummyhash', 'RAHUL250'),
-('Priya Patel', '9876543211', 'priya@email.com', '$2b$10$dummyhash', 'PRIYA100'),
-('Amit Kumar', '9876543212', 'amit@email.com', '$2b$10$dummyhash', 'AMIT150');
+('Rahul Sharma', '9876543210', 'rahul@email.com', '$2b$10$MDR.kmSQPvaRlG.AivT2RuYBYxw1iaLjrlN3boZr1RBPd1ui1bUWW', 'RAHUL250'),
+('Priya Patel', '9876543211', 'priya@email.com', '$2b$10$MDR.kmSQPvaRlG.AivT2RuYBYxw1iaLjrlN3boZr1RBPd1ui1bUWW', 'PRIYA100'),
+('Amit Kumar', '9876543212', 'amit@email.com', '$2b$10$MDR.kmSQPvaRlG.AivT2RuYBYxw1iaLjrlN3boZr1RBPd1ui1bUWW', 'AMIT150');
 
 INSERT INTO customer_addresses (customer_id, label, address_line1, city, state, pincode, is_default) VALUES
 (1, 'Home', '123, MG Road, Koramangala', 'Bangalore', 'Karnataka', '560034', 1),

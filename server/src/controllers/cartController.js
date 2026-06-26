@@ -8,7 +8,7 @@ exports.getCart = async (req, res) => {
         if (cart.length === 0) return res.json({ items: [] });
 
         const [items] = await db.query(`
-            SELECT sci.*, p.product_name, p.selling_price, p.purchase_price,
+            SELECT sci.*, p.product_name, p.selling_price, p.size,
                    (SELECT image_url FROM product_images pi WHERE pi.product_id = p.product_id AND pi.is_primary = 1 LIMIT 1) as image_url
             FROM shopping_cart_items sci
             JOIN products p ON sci.product_id = p.product_id

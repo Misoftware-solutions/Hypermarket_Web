@@ -13,3 +13,276 @@ body {
 #root {
   min-height: 100vh;
 }
+
+a, a:hover, a:focus, a:active {
+  text-decoration: none !important;
+}
+
+/* Flipkart-style Header Styles */
+.fk-header-wrapper {
+  background: #ffffff;
+  box-shadow: 0 1px 1px 0 rgba(0,0,0,.16);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 0 12px;
+}
+
+.fk-container {
+  max-width: 1248px;
+  margin: 0 auto;
+}
+
+/* Top Row Styles */
+.fk-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+  color: #666;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.fk-logo-box {
+  background: #ffe500;
+  color: #000;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  letter-spacing: -0.2px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.fk-logo-box:hover {
+  transform: scale(1.02);
+}
+
+.fk-pill-container {
+  display: flex;
+  gap: 8px;
+}
+
+.fk-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0f2f5;
+  color: #212529;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.fk-pill-btn:hover {
+  background: #e4e6eb;
+  border-color: #d8dadf;
+}
+
+.fk-location-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #333;
+}
+
+.fk-coins-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  background: #fff9e6;
+  color: #d48806;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #ffe58f;
+}
+
+/* Middle Row Styles */
+.fk-middle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  gap: 24px;
+}
+
+.fk-search-container {
+  flex: 1;
+  max-width: 600px;
+}
+
+.fk-search-input {
+  width: 100%;
+}
+
+.fk-search-input .ant-input-search-button {
+  background-color: #2874f0 !important;
+  border-color: #2874f0 !important;
+}
+
+.fk-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.fk-action-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  color: #333;
+  transition: color 0.15s ease;
+}
+
+.fk-action-item:hover {
+  color: #2874f0;
+}
+
+/* Custom Dropdown Styling */
+.fk-dropdown-content {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,.2);
+  min-width: 240px;
+  padding: 12px 0;
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+.fk-dropdown-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #212529;
+  padding: 4px 20px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 6px;
+}
+
+.fk-dropdown-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  color: #333;
+  font-size: 14px;
+  font-weight: 400;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  cursor: pointer;
+}
+
+.fk-dropdown-menu-item:hover {
+  background-color: #f5f7fa;
+  color: #2874f0;
+}
+
+.fk-dropdown-menu-item-danger {
+  color: #ff4d4f;
+}
+
+.fk-dropdown-menu-item-danger:hover {
+  background-color: #fff2f0;
+  color: #ff4d4f;
+}
+
+/* Bottom Row Category Bar */
+.fk-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+  gap: 16px;
+  overflow-x: auto;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Hide scrollbar for category row */
+.fk-bottom-row::-webkit-scrollbar {
+  display: none;
+}
+.fk-bottom-row {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.fk-cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  min-width: 80px;
+}
+
+.fk-cat-icon {
+  font-size: 20px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.fk-cat-card:hover .fk-cat-icon {
+  transform: translateY(-2px);
+}
+
+.fk-cat-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.fk-cat-card:hover .fk-cat-name {
+  color: #2874f0;
+}
+
+.fk-cat-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  background-color: #2874f0;
+  border-radius: 2px 2px 0 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.fk-cat-card-active .fk-cat-indicator {
+  opacity: 1;
+}
+
+.fk-cat-card-active .fk-cat-name {
+  color: #2874f0;
+}
+
+/* Force search bar wrapper and input to stay fully rounded (no rectangle on click/focus) */
+.fk-search-container .ant-select-selector,
+.fk-search-container .ant-input-affix-wrapper,
+.fk-search-container .ant-input-affix-wrapper-focused,
+.fk-search-container .ant-input {
+  border-radius: 24px !important;
+}
+
+.fk-search-container .ant-input-affix-wrapper-focused {
+  border-color: #2874f0 !important;
+  box-shadow: 0 0 0 2px rgba(40, 116, 240, 0.1) !important;
+}

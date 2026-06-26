@@ -30,3 +30,20 @@ exports.getCustomerById = async (req, res) => {
         res.json({ ...customer[0], addresses, recent_orders: orders });
     } catch (err) { res.status(500).json({ error: err.message }); }
 };
+
+exports.updateCustomer = async (req, res) => {
+    try {
+        const { customer_name, email, mobile } = req.body;
+        if (!customer_name || !email) {
+            return res.status(400).json({ message: 'Name and email are required' });
+        }
+        await db.query(
+            'UPDATE customers SET customer_name = ?, email = ?, mobile = ? WHERE customer_id = ?',
+            [customer_name, email, mobile, req.params.id]
+        );
+        res.json({ message: 'Profile updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+

@@ -28,14 +28,14 @@ exports.getOrderById = async (req, res) => {
         const [order] = await db.query(`
             SELECT o.*, c.customer_name, c.mobile, c.email
             FROM orders o LEFT JOIN customers c ON o.customer_id = c.customer_id
-            WHERE o.order_id = ?
-        `, [req.params.id]);
+            WHERE o.order_id = ? OR o.order_number = ?
+        `, [req.params.id, req.params.id]);
         if (order.length === 0) return res.status(404).json({ message: 'Order not found' });
         const [items] = await db.query(`
-            SELECT oi.*, p.product_name FROM order_items oi
+            SELECT oi.*, p.product_name, p.size FROM order_items oi
             LEFT JOIN products p ON oi.product_id = p.product_id
             WHERE oi.order_id = ?
-        `, [req.params.id]);
+        `, [order[0].order_id]);
         res.json({ ...order[0], items });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -65,3 +65,84 @@ exports.getCustomerOrders = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// Place new order
+exports.createOrder = async (req, res) => {
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const {
+            customer_id,
+            delivery_address_id,
+            payment_method,
+            delivery_slot,
+            subtotal,
+            tax_amount,
+            discount_amount = 0,
+            delivery_charge = 0,
+            grand_total,
+            items
+        } = req.body;
+
+        if (!customer_id || !items || items.length === 0) {
+            return res.status(400).json({ message: 'Customer ID and items are required' });
+        }
+
+        const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
+
+        const [orderResult] = await connection.query(`
+            INSERT INTO orders (order_number, customer_id, delivery_address_id, payment_method, delivery_slot, subtotal, tax_amount, discount_amount, delivery_charge, grand_total, order_status, payment_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Placed', ?)
+        `, [
+            orderNumber,
+            customer_id,
+            delivery_address_id || null,
+            payment_method,
+            delivery_slot || 'Express',
+            subtotal,
+            tax_amount,
+            discount_amount,
+            delivery_charge,
+            grand_total,
+            payment_method === 'online' ? 'Paid' : 'Pending'
+        ]);
+
+        const orderId = orderResult.insertId;
+
+        for (const item of items) {
+            const taxItem = Math.round(item.qty * item.unit_price * 0.05);
+            await connection.query(`
+                INSERT INTO order_items (order_id, product_id, qty, unit_price, tax_amount, total_amount)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `, [
+                orderId,
+                item.product_id,
+                item.qty,
+                item.unit_price,
+                taxItem,
+                (item.qty * item.unit_price) + taxItem
+            ]);
+
+            await connection.query(`
+                UPDATE inventory 
+                SET available_qty = GREATEST(0, available_qty - ?)
+                WHERE product_id = ?
+            `, [item.qty, item.product_id]);
+        }
+
+        const [cart] = await connection.query('SELECT cart_id FROM shopping_cart WHERE customer_id = ?', [customer_id]);
+        if (cart.length > 0) {
+            await connection.query('DELETE FROM shopping_cart_items WHERE cart_id = ?', [cart[0].cart_id]);
+        }
+
+        await connection.commit();
+        res.status(201).json({ message: 'Order placed successfully', order_id: orderId, order_number: orderNumber });
+    } catch (err) {
+        await connection.rollback();
+        res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
+    }
+};
+
