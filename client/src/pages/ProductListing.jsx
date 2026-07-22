@@ -236,17 +236,22 @@ const ProductListing = () => {
                         fontWeight: 700
                       }}>{discount}% OFF</Tag>}
                             <div style={{
-                        height: 100,
+                        height: 120,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         background: '#fafafa',
                         borderRadius: 12,
                         marginBottom: 12,
-                        fontSize: '3rem'
+                        fontSize: '3rem',
+                        overflow: 'hidden'
                       }}>
-                              {categoryEmojis[product.category_name] || '📦'}
-                            </div>
+                                {product.primary_image ? (
+                                  <img src={product.primary_image} alt={product.product_name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                ) : (
+                                  categoryEmojis[product.category_name] || '📦'
+                                )}
+                              </div>
                           </div>
                           <Tag color="default" style={{
                       borderRadius: 6,

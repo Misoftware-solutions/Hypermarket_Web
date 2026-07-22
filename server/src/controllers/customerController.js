@@ -47,3 +47,33 @@ exports.updateCustomer = async (req, res) => {
     }
 };
 
+exports.addAddress = async (req, res) => {
+    try {
+        const { label = 'Home', address_line1, address_line2 = '', city, state = 'Karnataka', pincode, is_default = false } = req.body;
+        if (!address_line1 || !city || !pincode) {
+            return res.status(400).json({ message: 'Address line 1, city, and pincode are required' });
+        }
+        const [result] = await db.query(
+            'INSERT INTO customer_addresses (customer_id, label, address_line1, address_line2, city, state, pincode, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.params.id, label, address_line1, address_line2, city, state, pincode, is_default ? 1 : 0]
+        );
+        res.status(201).json({
+            message: 'Address added successfully',
+            address: {
+                address_id: result.insertId,
+                customer_id: Number(req.params.id),
+                label,
+                address_line1,
+                address_line2,
+                city,
+                state,
+                pincode,
+                is_default
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+

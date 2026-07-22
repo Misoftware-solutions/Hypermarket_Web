@@ -153,7 +153,9 @@ const Cart = () => {
               margin: 0,
               color: '#1890ff'
             }}>₹{total}</Title></div>
-            <Input.Search placeholder="Coupon Code" enterButton="Apply" className="mb-3" />
+            <div className="mb-3 text-center p-2" style={{ background: '#fafafa', borderRadius: 8, border: '1px dashed #d9d9d9' }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>🏷️ Coupon & Promo Codes <Tag color="blue">Upcoming Feature</Tag></Text>
+            </div>
             <Link to="/checkout">
               <Button type="primary" size="large" block shape="round" style={{
               height: 48

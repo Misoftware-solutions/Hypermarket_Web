@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, Card, Switch, Upload, Row, Col, Statistic, Badge, message, Alert, AutoComplete } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ExportOutlined, InboxOutlined } from '@ant-design/icons';
-import { getProducts, getCategories, getBrands, createProduct, deleteProduct, updateProduct } from '../../services/api';
+import { getProducts, getCategories, getBrands, createProduct, deleteProduct, updateProduct, uploadProductImage } from '../../services/api';
 const {
   Title,
   Text
@@ -19,11 +19,14 @@ const AdminProducts = () => {
   const [search, setSearch] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [productSuggestions, setProductSuggestions] = useState([]);
+  const [fileList, setFileList] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleCancel = () => {
     setIsModalOpen(false);
     setEditingProduct(null);
     setProductSuggestions([]);
+    setFileList([]);
     form.resetFields();
   };
 
@@ -58,6 +61,23 @@ const AdminProducts = () => {
     const selectedProduct = option?.product;
     if (selectedProduct) {
       setEditingProduct(selectedProduct);
+      if (selectedProduct.images && selectedProduct.images.length > 0) {
+        setFileList(selectedProduct.images.map((img, idx) => ({
+          uid: `-${img.image_id || idx + 1}`,
+          name: img.image_url.split('/').pop() || `image_${idx + 1}.png`,
+          status: 'done',
+          url: img.image_url
+        })));
+      } else if (selectedProduct.primary_image) {
+        setFileList([{
+          uid: '-1',
+          name: 'primary_image.png',
+          status: 'done',
+          url: selectedProduct.primary_image
+        }]);
+      } else {
+        setFileList([]);
+      }
       form.setFieldsValue({
         product_name: selectedProduct.product_name,
         category_id: selectedProduct.category_id,
@@ -96,9 +116,72 @@ const AdminProducts = () => {
       setLoading(false);
     }
   };
+
+  const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const maxWidth = 600;
+          const maxHeight = 600;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            if (width > height) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const base64Str = canvas.toDataURL('image/jpeg', 0.6);
+          resolve(base64Str);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
+  const handleUploadImage = async (file) => {
+    try {
+      const fileData = await compressImage(file);
+      const ext = 'jpg';
+      const fileName = `prod_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
+      const res = await uploadProductImage({ fileName, fileData });
+      return res.data.url;
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const handleCreate = async () => {
     try {
       const values = await form.validateFields();
+      setSubmitting(true);
+
+      const uploadedImageUrls = [];
+      for (let i = 0; i < fileList.length; i++) {
+        const file = fileList[i];
+        if (file.originFileObj) {
+          const url = await handleUploadImage(file.originFileObj);
+          uploadedImageUrls.push(url);
+        } else if (file.url) {
+          uploadedImageUrls.push(file.url);
+        }
+      }
       
       // Calculate offer_price as integer from MRP and offer_percentage
       const mrp = Math.round(values.mrp || 0);
@@ -112,7 +195,9 @@ const AdminProducts = () => {
         offer_price: offerPrice,
         tax_percent: Math.round(values.tax_percent || 0),
         is_featured: values.is_featured ? 1 : 0,
-        is_active: editingProduct ? (editingProduct.is_active ? 1 : 0) : 1
+        is_active: editingProduct ? (editingProduct.is_active ? 1 : 0) : 1,
+        image_urls: uploadedImageUrls,
+        image_url: uploadedImageUrls.length > 0 ? uploadedImageUrls[0] : null
       };
       
       delete payload.offer_percentage;
@@ -130,6 +215,8 @@ const AdminProducts = () => {
     } catch (err) {
       console.error(err);
       message.error(err.response?.data?.message || 'Failed to save product');
+    } finally {
+      setSubmitting(false);
     }
   };
   const handleDelete = id => {
@@ -158,9 +245,16 @@ const AdminProducts = () => {
     title: 'Product',
     dataIndex: 'product_name',
     render: (name, r) => (
-      <div>
-        <Text strong>{name}</Text>
-        {r.size && <div style={{ fontSize: '11px', color: '#8c8c8c' }}>{r.size}</div>}
+      <div className="d-flex align-items-center gap-2">
+        {r.primary_image ? (
+          <img src={r.primary_image} alt={name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6 }} />
+        ) : (
+          <div style={{ width: 40, height: 40, background: '#f5f5f5', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📦</div>
+        )}
+        <div>
+          <Text strong>{name}</Text>
+          {r.size && <div style={{ fontSize: '11px', color: '#8c8c8c' }}>{r.size}</div>}
+        </div>
       </div>
     )
   }, {
@@ -203,7 +297,7 @@ const AdminProducts = () => {
     title: 'Actions',
     width: 100,
     render: (_, r) => <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => {
+          <Button type="text" icon={<EditOutlined />} onClick={async () => {
             setEditingProduct(r);
             form.setFieldsValue({
               product_name: r.product_name,
@@ -219,6 +313,34 @@ const AdminProducts = () => {
               description: r.description
             });
             setIsModalOpen(true);
+
+            // Fetch complete product details including images array from backend
+            try {
+              const { getProductById } = await import('../../services/api');
+              const res = await getProductById(r.product_id);
+              const fullProd = res.data;
+              if (fullProd.images && fullProd.images.length > 0) {
+                setFileList(fullProd.images.map((img, idx) => ({
+                  uid: `-${img.image_id || idx + 1}`,
+                  name: img.image_url.split('/').pop() || `image_${idx + 1}.png`,
+                  status: 'done',
+                  url: img.image_url
+                })));
+              } else if (fullProd.primary_image) {
+                setFileList([{
+                  uid: '-1',
+                  name: 'primary_image.png',
+                  status: 'done',
+                  url: fullProd.primary_image
+                }]);
+              } else {
+                setFileList([]);
+              }
+            } catch (err) {
+              if (r.primary_image) {
+                setFileList([{ uid: '-1', name: 'primary_image.png', status: 'done', url: r.primary_image }]);
+              }
+            }
           }} style={{
         color: '#1890ff'
       }} />
@@ -266,7 +388,7 @@ const AdminProducts = () => {
           width: 250
         }} value={search} onChange={e => setSearch(e.target.value)} />
           <Button icon={<ExportOutlined />}>Export</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingProduct(null); setProductSuggestions([]); form.resetFields(); setIsModalOpen(true); }}>Add Product</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingProduct(null); setProductSuggestions([]); setFileList([]); form.resetFields(); setIsModalOpen(true); }}>Add Product</Button>
         </Space>
       </div>
       <Card style={{
@@ -282,7 +404,7 @@ const AdminProducts = () => {
         showTotal: t => `${t} products`
       }} />
       </Card>
-      <Modal title={editingProduct ? "Edit Product" : "Add New Product"} open={isModalOpen} onCancel={handleCancel} width={720} onOk={handleCreate}>
+      <Modal title={editingProduct ? "Edit Product" : "Add New Product"} open={isModalOpen} onCancel={handleCancel} width={720} onOk={handleCreate} confirmLoading={submitting}>
         <Form form={form} layout="vertical" size="large">
           {matchedProduct && (
             <Alert
@@ -439,13 +561,21 @@ const AdminProducts = () => {
           >
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item label="Product Images" >
-            <Dragger multiple listType="picture" accept="image/*">
+          <Form.Item label="Product Images (Up to 5)">
+            <Dragger
+              beforeUpload={() => false}
+              fileList={fileList}
+              onChange={({ fileList: newFileList }) => setFileList(newFileList.slice(0, 5))}
+              maxCount={5}
+              multiple
+              listType="picture"
+              accept="image/*"
+            >
               <p className="ant-upload-drag-icon"><InboxOutlined style={{
                 fontSize: 40,
                 color: '#1890ff'
               }} /></p>
-              <p className="ant-upload-text">Click or drag images to upload</p>
+              <p className="ant-upload-text">Click or drag up to 5 images to upload</p>
             </Dragger>
           </Form.Item>
         </Form>

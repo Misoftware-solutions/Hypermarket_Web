@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Steps, Card, Radio, Button, Typography, Divider, Form, Input, Select, Row, Col, Tag, Space, Spin, message } from 'antd';
-import { EnvironmentOutlined, ClockCircleOutlined, CreditCardOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Steps, Card, Radio, Button, Typography, Divider, Form, Input, Select, Row, Col, Tag, Space, Spin, Modal, Tabs, message } from 'antd';
+import { EnvironmentOutlined, ClockCircleOutlined, CreditCardOutlined, CheckCircleOutlined, LockOutlined, QrcodeOutlined, BankOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCart, getCustomerById, createOrder } from '../services/api';
+import { getCart, getCustomerById, createOrder, addCustomerAddress } from '../services/api';
 
 const {
   Title,
@@ -22,6 +22,12 @@ const Checkout = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState('slot1');
+
+  // Dummy Payment Gateway Modal State
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [addressForm] = Form.useForm();
+  const [savingAddress, setSavingAddress] = useState(false);
 
   const userString = sessionStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : null;
@@ -88,7 +94,9 @@ const Checkout = () => {
 
   const subtotal = cartItems.reduce((s, item) => s + item.price * item.qty, 0);
   const tax = Math.round(subtotal * 0.05);
-  const delivery = subtotal > 500 ? 0 : 40;
+  const baseDelivery = subtotal > 500 ? 0 : 40;
+  const expressFee = selectedSlot === 'slot1' ? 30 : 0;
+  const delivery = baseDelivery + expressFee;
   const total = subtotal + tax + delivery;
 
   const slotLabels = {
@@ -98,11 +106,31 @@ const Checkout = () => {
     slot4: 'Tomorrow (2 PM - 5 PM)'
   };
 
-  const handlePlaceOrder = async () => {
-    if (cartItems.length === 0) {
-      message.warning('Your cart is empty');
-      return;
+  const handleSaveAddress = async (values) => {
+    setSavingAddress(true);
+    try {
+      const res = await addCustomerAddress(user.id, values);
+      const newAddr = {
+        id: res.data.address.address_id,
+        label: values.label || 'Home',
+        address: values.address_line1 + (values.address_line2 ? `, ${values.address_line2}` : ''),
+        city: values.city,
+        state: values.state || 'Karnataka',
+        pincode: values.pincode,
+        isDefault: false
+      };
+      setAddresses(prev => [...prev, newAddr]);
+      setSelectedAddress(newAddr.id);
+      addressForm.resetFields();
+      message.success('Address saved successfully!');
+    } catch (err) {
+      message.error(err.response?.data?.message || 'Failed to save address');
+    } finally {
+      setSavingAddress(false);
     }
+  };
+
+  const executeOrderSubmission = async () => {
     setSubmitting(true);
     try {
       const orderData = {
@@ -130,6 +158,28 @@ const Checkout = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleInitiateOrder = () => {
+    if (cartItems.length === 0) {
+      message.warning('Your cart is empty');
+      return;
+    }
+
+    if (paymentMethod === 'online') {
+      setPaymentModalOpen(true);
+    } else {
+      executeOrderSubmission();
+    }
+  };
+
+  const handleSimulateSuccess = () => {
+    setPaymentProcessing(true);
+    setTimeout(() => {
+      setPaymentProcessing(false);
+      setPaymentModalOpen(false);
+      executeOrderSubmission();
+    }, 1500);
   };
 
   if (loading) {
@@ -163,7 +213,7 @@ const Checkout = () => {
           <Radio.Group value={selectedAddress} onChange={e => setSelectedAddress(e.target.value)} className="w-100">
             <Row gutter={16}>
               {addresses.map(addr => <Col xs={24} md={12} key={addr.id}>
-                  <Radio value={addr.id} className="w-100">
+                  <Radio value={addr.id} className="w-100 mb-3">
                     <Card size="small" style={{
                 borderRadius: 10,
                 border: selectedAddress === addr.id ? '2px solid #1890ff' : undefined,
@@ -182,23 +232,28 @@ const Checkout = () => {
           </Radio.Group>
           <Divider />
           <Title level={5}>Add New Address</Title>
-          <Form layout="vertical" size="large">
+          <Form form={addressForm} layout="vertical" size="large" onFinish={handleSaveAddress}>
             <Row gutter={16}>
-              <Col xs={24} md={8}><Form.Item label="Label"><Select options={[{
-                value: 'Home',
-                label: 'Home'
-              }, {
-                value: 'Work',
-                label: 'Work'
-              }, {
-                value: 'Other',
-                label: 'Other'
-              }]} /></Form.Item></Col>
-              <Col xs={24} md={8}><Form.Item label="City"><Input placeholder="City" /></Form.Item></Col>
-              <Col xs={24} md={8}><Form.Item label="Pincode"><Input placeholder="Pincode" /></Form.Item></Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="label" label="Label" initialValue="Home">
+                  <Select options={[{ value: 'Home', label: 'Home' }, { value: 'Work', label: 'Work' }, { value: 'Other', label: 'Other' }]} />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="city" label="City" rules={[{ required: true, message: 'Please enter city' }]}>
+                  <Input placeholder="City" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item name="pincode" label="Pincode" rules={[{ required: true, message: 'Please enter pincode' }]}>
+                  <Input placeholder="Pincode" />
+                </Form.Item>
+              </Col>
             </Row>
-            <Form.Item label="Address Line 1"><Input placeholder="Full address" /></Form.Item>
-            <Button type="dashed" block>+ Save Address</Button>
+            <Form.Item name="address_line1" label="Address Line 1" rules={[{ required: true, message: 'Please enter address' }]}>
+              <Input placeholder="Flat / House No., Floor, Building Name" />
+            </Form.Item>
+            <Button type="dashed" htmlType="submit" loading={savingAddress} block>+ Save & Select Address</Button>
           </Form>
         </div>
   }, {
@@ -250,16 +305,16 @@ const Checkout = () => {
             <Space direction="vertical" className="w-100" size="middle">
               {[{
             key: 'online',
-            label: 'Online Payment',
-            desc: 'Pay via Razorpay (UPI, Cards, Net Banking)'
+            label: 'Online Payment (Simulated)',
+            desc: 'Pay via UPI, Cards, or Net Banking'
           }, {
             key: 'cod',
             label: 'Cash on Delivery',
-            desc: 'Pay when your order is delivered'
+            desc: 'Pay cash when your order is delivered'
           }, {
             key: 'wallet',
             label: 'Wallet Balance',
-            desc: 'Available: ₹250.00'
+            desc: 'Available Balance: ₹250.00'
           }].map(pm => <Radio value={pm.key} key={pm.key} className="w-100">
                   <Card size="small" style={{
               borderRadius: 10,
@@ -295,7 +350,7 @@ const Checkout = () => {
             <Divider />
             <div className="d-flex justify-content-between">
               <Button disabled={currentStep === 0} onClick={() => setCurrentStep(c => c - 1)}>Previous</Button>
-              {currentStep < steps.length - 1 ? <Button type="primary" onClick={() => setCurrentStep(c => c + 1)}>Next</Button> : <Button type="primary" size="large" onClick={handlePlaceOrder} loading={submitting} style={{
+              {currentStep < steps.length - 1 ? <Button type="primary" onClick={() => setCurrentStep(c => c + 1)}>Next</Button> : <Button type="primary" size="large" onClick={handleInitiateOrder} loading={submitting} style={{
               height: 48,
               paddingInline: 40
             }}>Place Order — ₹{total}</Button>}
@@ -331,6 +386,98 @@ const Checkout = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Dummy Payment Gateway Modal */}
+      <Modal
+        title={<div className="d-flex align-items-center gap-2"><LockOutlined style={{ color: '#52c41a' }} /> Dummy Payment Gateway</div>}
+        open={paymentModalOpen}
+        onCancel={() => !paymentProcessing && setPaymentModalOpen(false)}
+        footer={null}
+        centered
+        width={480}
+      >
+        <div style={{ textAlign: 'center', padding: '10px 0' }}>
+          <Tag color="blue" style={{ fontSize: 13, padding: '4px 12px' }}>Total Payable: ₹{total}</Tag>
+          <Text type="secondary" className="d-block mt-2">Choose dummy payment method to test checkout completion:</Text>
+        </div>
+
+        <Tabs
+          defaultActiveKey="card"
+          centered
+          items={[
+            {
+              key: 'card',
+              label: <span><CreditCardOutlined /> Card</span>,
+              children: (
+                <Space direction="vertical" className="w-100 mt-2">
+                  <Input placeholder="Card Number (4532 XXXX XXXX 8900)" defaultValue="4532 •••• •••• 8900" disabled />
+                  <Row gutter={12}>
+                    <Col span={12}><Input placeholder="MM/YY" defaultValue="12/28" disabled /></Col>
+                    <Col span={12}><Input placeholder="CVV" defaultValue="789" disabled /></Col>
+                  </Row>
+                  <Input placeholder="Cardholder Name" defaultValue="John Doe" disabled />
+                </Space>
+              )
+            },
+            {
+              key: 'upi',
+              label: <span><QrcodeOutlined /> UPI / QR</span>,
+              children: (
+                <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                  <div style={{ background: '#f5f5f5', display: 'inline-block', padding: 16, borderRadius: 12 }}>
+                    <QrcodeOutlined style={{ fontSize: 100, color: '#1890ff' }} />
+                  </div>
+                  <Text className="d-block mt-2" strong>Scan or enter UPI ID: user@upi</Text>
+                </div>
+              )
+            },
+            {
+              key: 'netbanking',
+              label: <span><BankOutlined /> Net Banking</span>,
+              children: (
+                <Select
+                  className="w-100 mt-2"
+                  defaultValue="sbi"
+                  options={[
+                    { value: 'sbi', label: 'State Bank of India' },
+                    { value: 'hdfc', label: 'HDFC Bank' },
+                    { value: 'icici', label: 'ICICI Bank' },
+                    { value: 'axis', label: 'Axis Bank' }
+                  ]}
+                />
+              )
+            }
+          ]}
+        />
+
+        <Divider style={{ margin: '16px 0' }} />
+
+        <Space direction="vertical" className="w-100" size="middle">
+          <Button
+            type="primary"
+            size="large"
+            block
+            loading={paymentProcessing}
+            onClick={handleSimulateSuccess}
+            style={{ background: '#52c41a', borderColor: '#52c41a', height: 44, fontWeight: 600 }}
+          >
+            Simulate Successful Payment (₹{total})
+          </Button>
+
+          <Button
+            danger
+            block
+            disabled={paymentProcessing}
+            onClick={() => {
+              message.error('Payment cancelled / failed');
+              setPaymentModalOpen(false);
+            }}
+          >
+            Cancel / Fail Payment
+          </Button>
+        </Space>
+      </Modal>
     </div>;
 };
+
 export default Checkout;

@@ -36,11 +36,20 @@ exports.getAllProducts = async (req, res) => {
 
         const [rows] = await db.query(query, params);
 
-        // Convert BIT columns to standard numbers (prevent Buffer objects from being treated as truthy on client)
-        rows.forEach(p => {
-            p.is_featured = p.is_featured !== null ? (Buffer.isBuffer(p.is_featured) ? p.is_featured[0] : p.is_featured) : 0;
-            p.is_active = p.is_active !== null ? (Buffer.isBuffer(p.is_active) ? p.is_active[0] : p.is_active) : 1;
-        });
+        // Fetch images for all returned products
+        if (rows.length > 0) {
+            const productIds = rows.map(p => p.product_id);
+            const [allImages] = await db.query(
+                'SELECT * FROM product_images WHERE product_id IN (?) ORDER BY sort_order',
+                [productIds]
+            );
+            
+            rows.forEach(p => {
+                p.is_featured = p.is_featured !== null ? (Buffer.isBuffer(p.is_featured) ? p.is_featured[0] : p.is_featured) : 0;
+                p.is_active = p.is_active !== null ? (Buffer.isBuffer(p.is_active) ? p.is_active[0] : p.is_active) : 1;
+                p.images = allImages.filter(img => img.product_id === p.product_id);
+            });
+        }
 
         let countQuery = 'SELECT COUNT(*) as total FROM products p WHERE p.is_active = 1';
         const countParams = [];
@@ -90,18 +99,31 @@ exports.getProductById = async (req, res) => {
     }
 };
 
+const fs = require('fs');
+const path = require('path');
+
 // Create product
 exports.createProduct = async (req, res) => {
     try {
-        const { product_name, category_id, brand_id, unit_id, size, mrp, selling_price, offer_price, tax_percent, hsn_code, description, is_featured } = req.body;
+        const { product_name, category_id, brand_id, unit_id, size, mrp, selling_price, offer_price, tax_percent, hsn_code, description, is_featured, image_url, image_urls } = req.body;
         const slug = product_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         const [result] = await db.query(
             `INSERT INTO products (product_name, slug, category_id, brand_id, unit_id, size, mrp, selling_price, offer_price, tax_percent, hsn_code, description, is_featured)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [product_name, slug, category_id, brand_id, unit_id, size || null, mrp, selling_price, offer_price || null, tax_percent || 0, hsn_code, description, is_featured ? 1 : 0]
         );
-        await db.query('INSERT INTO inventory (product_id, available_qty) VALUES (?, 0)', [result.insertId]);
-        res.status(201).json({ product_id: result.insertId, message: 'Product created' });
+        const productId = result.insertId;
+        await db.query('INSERT INTO inventory (product_id, available_qty) VALUES (?, 0)', [productId]);
+
+        const urls = image_urls && Array.isArray(image_urls) && image_urls.length > 0 ? image_urls : (image_url ? [image_url] : []);
+        for (let i = 0; i < urls.length; i++) {
+            await db.query(
+                'INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES (?, ?, ?, ?)',
+                [productId, urls[i], i === 0 ? 1 : 0, i]
+            );
+        }
+
+        res.status(201).json({ product_id: productId, message: 'Product created' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -110,7 +132,7 @@ exports.createProduct = async (req, res) => {
 // Update product
 exports.updateProduct = async (req, res) => {
     try {
-        const { product_name, category_id, brand_id, unit_id, size, mrp, selling_price, offer_price, tax_percent, hsn_code, description, is_featured, is_active } = req.body;
+        const { product_name, category_id, brand_id, unit_id, size, mrp, selling_price, offer_price, tax_percent, hsn_code, description, is_featured, is_active, image_url, image_urls } = req.body;
         const slug = product_name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
         
         // Fetch current product to prevent overwriting missing status flags with 0
@@ -132,6 +154,18 @@ exports.updateProduct = async (req, res) => {
             `UPDATE products SET product_name=?, slug=?, category_id=?, brand_id=?, unit_id=?, size=?, mrp=?, selling_price=?, offer_price=?, tax_percent=?, hsn_code=?, description=?, is_featured=?, is_active=? WHERE product_id=?`,
             [product_name, slug, category_id, brand_id, unit_id, final_size, mrp, selling_price, offer_price || null, tax_percent, hsn_code, description, final_featured, final_active, req.params.id]
         );
+
+        const urls = image_urls && Array.isArray(image_urls) ? image_urls : (image_url ? [image_url] : null);
+        if (urls !== null) {
+            await db.query('DELETE FROM product_images WHERE product_id = ?', [req.params.id]);
+            for (let i = 0; i < urls.length; i++) {
+                await db.query(
+                    'INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES (?, ?, ?, ?)',
+                    [req.params.id, urls[i], i === 0 ? 1 : 0, i]
+                );
+            }
+        }
+
         res.json({ message: 'Product updated' });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -147,3 +181,34 @@ exports.deleteProduct = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// Upload Product Image (base64)
+exports.uploadProductImage = async (req, res) => {
+    try {
+        const { fileName, fileData } = req.body;
+        if (!fileName || !fileData) {
+            return res.status(400).json({ error: 'fileName and fileData are required' });
+        }
+
+        const base64Data = fileData.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        const srcProductsDir = path.join(__dirname, '..', '..', '..', 'client', 'src', 'images', 'Products');
+        const publicProductsDir = path.join(__dirname, '..', '..', '..', 'client', 'public', 'images', 'Products');
+
+        fs.mkdirSync(srcProductsDir, { recursive: true });
+        fs.mkdirSync(publicProductsDir, { recursive: true });
+
+        const srcFilePath = path.join(srcProductsDir, fileName);
+        fs.writeFileSync(srcFilePath, buffer);
+
+        const publicFilePath = path.join(publicProductsDir, fileName);
+        fs.writeFileSync(publicFilePath, buffer);
+
+        const webUrl = `/images/Products/${fileName}`;
+        res.json({ success: true, url: webUrl });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+

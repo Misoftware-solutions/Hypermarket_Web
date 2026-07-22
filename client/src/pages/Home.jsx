@@ -301,9 +301,14 @@ const Home = () => {
                         background: '#fafafa',
                         borderRadius: 12,
                         marginBottom: 12,
-                        fontSize: '3.5rem'
+                        fontSize: '3.5rem',
+                        overflow: 'hidden'
                       }}>
-                        {categoryEmojis[product.category_name] || '📦'}
+                        {product.primary_image ? (
+                          <img src={product.primary_image} alt={product.product_name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        ) : (
+                          categoryEmojis[product.category_name] || '📦'
+                        )}
                       </div>
                     </div>
                     <Tag color="default" style={{

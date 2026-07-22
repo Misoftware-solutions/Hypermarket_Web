@@ -18,6 +18,7 @@ const ProductDetail = () => {
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
   const [adding, setAdding] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
 
   const handleAddToCart = async () => {
     const userString = sessionStorage.getItem('user');
@@ -88,10 +89,48 @@ const ProductDetail = () => {
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '8rem',
-            marginBottom: 16
+            marginBottom: 16,
+            overflow: 'hidden'
           }}>
-              {categoryEmojis[product.category_name] || '📦'}
+              {product.images && product.images.length > 0 && product.images[activeImage]?.image_url ? (
+                <img
+                  src={product.images[activeImage].image_url}
+                  alt={product.product_name}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              ) : product.primary_image ? (
+                <img
+                  src={product.primary_image}
+                  alt={product.product_name}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              ) : (
+                categoryEmojis[product.category_name] || '📦'
+              )}
             </div>
+
+            {product.images && product.images.length > 1 && (
+              <div className="d-flex gap-2 justify-content-center flex-wrap mt-2">
+                {product.images.map((img, idx) => (
+                  <div
+                    key={img.image_id || idx}
+                    onClick={() => setActiveImage(idx)}
+                    style={{
+                      width: 60,
+                      height: 60,
+                      borderRadius: 8,
+                      border: activeImage === idx ? '2px solid #1890ff' : '1px solid #d9d9d9',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      padding: 2,
+                      background: '#fff'
+                    }}
+                  >
+                    <img src={img.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6 }} />
+                  </div>
+                ))}
+              </div>
+            )}
           </Col>
           <Col xs={24} md={14}>
             <Tag color="blue" className="mb-2">{product.category_name}</Tag>

@@ -17,16 +17,31 @@ const Navbar = () => {
   const [categories, setCategories] = useState([]);
   const [searchOptions, setSearchOptions] = useState([]);
   const [searchValue, setSearchValue] = useState('');
+  const [cartCount, setCartCount] = useState(0);
+
+  const userString = sessionStorage.getItem('user');
+  const user = userString ? JSON.parse(userString) : null;
 
   useEffect(() => {
     if (location.pathname.startsWith('/admin')) return;
     getCategories().then(res => setCategories(res.data || [])).catch(() => { });
+
+    if (user) {
+      import('../services/api').then(({ getCart }) => {
+        getCart(user.id).then(res => {
+          const items = res.data?.items || [];
+          const count = items.reduce((sum, item) => sum + Number(item.qty), 0);
+          setCartCount(count);
+        }).catch(() => setCartCount(0));
+      });
+    } else {
+      setCartCount(0);
+    }
   }, [location.pathname]);
 
   // Hide navbar on admin pages
   if (location.pathname.startsWith('/admin')) return null;
-  const userString = sessionStorage.getItem('user');
-  const user = userString ? JSON.parse(userString) : null;
+
   const handleLogout = () => {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
@@ -213,14 +228,14 @@ const Navbar = () => {
           onChange={setSearchValue}
           style={{ width: '100%' }}
         >
-          <Input.Search placeholder="Search for groceries, fruits, veggies..." allowClear onSearch={handleSearch} enterButton={<Button type="primary" style={{
-            background: '#1890ff',
-            width: '60px'
-          }}><Search size={20} /></Button>} size="large" style={{
-            borderRadius: '24px',
-            overflow: 'hidden',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.05)'
-          }} />
+          <Input.Search
+            className="fk-search-input"
+            placeholder="Search for groceries, fruits, veggies..."
+            allowClear
+            onSearch={handleSearch}
+            enterButton={<Button type="primary" style={{ background: '#1890ff', width: '60px' }}><Search size={20} /></Button>}
+            size="large"
+          />
         </AutoComplete>
       </div>
 
@@ -243,7 +258,7 @@ const Navbar = () => {
         }}></div>
 
         <Link to="/cart">
-          <Badge count={3} size="small" color="#f5222d" offset={[-4, 4]}>
+          <Badge count={cartCount} size="small" color="#f5222d" offset={[-4, 4]}>
             <Button type="text" shape="circle" style={{
               width: 44,
               height: 44,

@@ -6,5 +6,7 @@ const { authenticate, authorizeAdmin } = require('../middleware/auth');
 router.get('/', authorizeAdmin, customerController.getAllCustomers);
 router.get('/:id', authenticate, customerController.getCustomerById);
 router.put('/:id', authenticate, customerController.updateCustomer);
+router.post('/:id/addresses', authenticate, customerController.addAddress);
 
 module.exports = router;
+

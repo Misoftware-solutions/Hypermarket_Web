@@ -30,6 +30,7 @@ export const getProducts = params => API.get('/products', {
 });
 export const getProductById = id => API.get(`/products/${id}`);
 export const createProduct = data => API.post('/products', data);
+export const uploadProductImage = data => API.post('/products/upload', data);
 export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
 export const deleteProduct = id => API.delete(`/products/${id}`);
 
@@ -88,5 +89,6 @@ export const getCustomers = params => API.get('/customers', {
 });
 export const getCustomerById = id => API.get(`/customers/${id}`);
 export const updateCustomer = (id, data) => API.put(`/customers/${id}`, data);
+export const addCustomerAddress = (id, data) => API.post(`/customers/${id}/addresses`, data);
 
 export default API;
