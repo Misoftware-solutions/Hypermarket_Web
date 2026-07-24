@@ -50,6 +50,7 @@ const Cart = () => {
       setCartItems(items =>
         items.map(item => (item.key === key ? { ...item, qty } : item))
       );
+      window.dispatchEvent(new Event('cartChange'));
     } catch (err) {
       message.error('Failed to update quantity');
     }
@@ -60,6 +61,7 @@ const Cart = () => {
       await removeCartItem(key);
       setCartItems(items => items.filter(item => item.key !== key));
       message.success('Item removed from cart');
+      window.dispatchEvent(new Event('cartChange'));
     } catch (err) {
       message.error('Failed to remove item');
     }

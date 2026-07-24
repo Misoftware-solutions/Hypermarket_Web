@@ -182,7 +182,7 @@ exports.deleteProduct = async (req, res) => {
     }
 };
 
-// Upload Product Image (base64)
+// Upload Product Image (writes image file to server public directory)
 exports.uploadProductImage = async (req, res) => {
     try {
         const { fileName, fileData } = req.body;
@@ -193,20 +193,13 @@ exports.uploadProductImage = async (req, res) => {
         const base64Data = fileData.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
 
-        const srcProductsDir = path.join(__dirname, '..', '..', '..', 'client', 'src', 'images', 'Products');
         const publicProductsDir = path.join(__dirname, '..', '..', '..', 'client', 'public', 'images', 'Products');
-
-        fs.mkdirSync(srcProductsDir, { recursive: true });
         fs.mkdirSync(publicProductsDir, { recursive: true });
-
-        const srcFilePath = path.join(srcProductsDir, fileName);
-        fs.writeFileSync(srcFilePath, buffer);
 
         const publicFilePath = path.join(publicProductsDir, fileName);
         fs.writeFileSync(publicFilePath, buffer);
 
-        const webUrl = `/images/Products/${fileName}`;
-        res.json({ success: true, url: webUrl });
+        res.json({ success: true, url: fileData });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

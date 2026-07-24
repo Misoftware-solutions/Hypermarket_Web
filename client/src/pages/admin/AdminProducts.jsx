@@ -125,8 +125,8 @@ const AdminProducts = () => {
         const img = new Image();
         img.src = event.target.result;
         img.onload = () => {
-          const maxWidth = 600;
-          const maxHeight = 600;
+          const maxWidth = 400;
+          const maxHeight = 400;
           let width = img.width;
           let height = img.height;
 
@@ -146,7 +146,7 @@ const AdminProducts = () => {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
-          const base64Str = canvas.toDataURL('image/jpeg', 0.6);
+          const base64Str = canvas.toDataURL('image/jpeg', 0.5);
           resolve(base64Str);
         };
         img.onerror = (err) => reject(err);
@@ -178,6 +178,12 @@ const AdminProducts = () => {
         if (file.originFileObj) {
           const url = await handleUploadImage(file.originFileObj);
           uploadedImageUrls.push(url);
+        } else if (file.url && file.url.startsWith('data:image')) {
+          // Convert existing base64 URL to clean server image file path
+          const ext = 'jpg';
+          const fileName = `prod_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
+          const res = await uploadProductImage({ fileName, fileData: file.url });
+          uploadedImageUrls.push(res.data.url);
         } else if (file.url) {
           uploadedImageUrls.push(file.url);
         }

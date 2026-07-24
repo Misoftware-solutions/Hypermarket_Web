@@ -36,6 +36,7 @@ const ProductDetail = () => {
         qty: qty
       });
       message.success('Item added to cart!');
+      window.dispatchEvent(new Event('cartChange'));
     } catch (err) {
       message.error(err.response?.data?.message || 'Failed to add item to cart.');
     } finally {

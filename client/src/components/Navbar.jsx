@@ -26,17 +26,28 @@ const Navbar = () => {
     if (location.pathname.startsWith('/admin')) return;
     getCategories().then(res => setCategories(res.data || [])).catch(() => { });
 
-    if (user) {
-      import('../services/api').then(({ getCart }) => {
-        getCart(user.id).then(res => {
-          const items = res.data?.items || [];
-          const count = items.reduce((sum, item) => sum + Number(item.qty), 0);
-          setCartCount(count);
-        }).catch(() => setCartCount(0));
-      });
-    } else {
-      setCartCount(0);
-    }
+    const updateCart = () => {
+      const uStr = sessionStorage.getItem('user');
+      const currentUser = uStr ? JSON.parse(uStr) : null;
+      if (currentUser) {
+        import('../services/api').then(({ getCart }) => {
+          getCart(currentUser.id).then(res => {
+            const items = res.data?.items || [];
+            const count = items.reduce((sum, item) => sum + Number(item.qty), 0);
+            setCartCount(count);
+          }).catch(() => setCartCount(0));
+        });
+      } else {
+        setCartCount(0);
+      }
+    };
+
+    updateCart();
+
+    window.addEventListener('cartChange', updateCart);
+    return () => {
+      window.removeEventListener('cartChange', updateCart);
+    };
   }, [location.pathname]);
 
   // Hide navbar on admin pages

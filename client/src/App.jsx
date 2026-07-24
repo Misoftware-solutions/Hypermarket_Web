@@ -5,6 +5,8 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
+import ScrollToTop from './components/ScrollToTop';
+
 
 // Lazy-loaded Customer Pages
 const Home = lazy(() => import('./pages/Home'));
@@ -46,6 +48,7 @@ function App() {
     }
   }}>
       <Router>
+        <ScrollToTop />
         <Navbar />
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback />}>

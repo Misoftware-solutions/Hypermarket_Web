@@ -74,8 +74,7 @@ exports.uploadBannerImage = async (req, res) => {
         const publicFilePath = path.join(publicBannersDir, fileName);
         fs.writeFileSync(publicFilePath, buffer);
 
-        const webUrl = `/images/Banners/${fileName}`;
-        res.json({ success: true, url: webUrl });
+        res.json({ success: true, url: fileData });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

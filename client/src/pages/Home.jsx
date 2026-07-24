@@ -35,6 +35,7 @@ const Home = () => {
         qty: 1
       });
       message.success('Item added to cart!');
+      window.dispatchEvent(new Event('cartChange'));
     } catch (err) {
       message.error(err.response?.data?.message || 'Failed to add item to cart.');
     } finally {
@@ -203,7 +204,7 @@ const Home = () => {
     <div style={{ padding: '40px 50px', background: '#f8f9fa' }}>
       {/* Categories */}
       {loading ? <div className="text-center py-4"><Spin size="large" /></div> : <>
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <div><Title level={2} style={{
               marginBottom: 4
@@ -255,7 +256,7 @@ const Home = () => {
               </Link>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Featured Products */}
         <div className="mb-5">
