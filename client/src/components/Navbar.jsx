@@ -296,7 +296,7 @@ const Navbar = () => {
             verticalAlign: 'middle',
             marginRight: '6px'
           }}>🛒</span>
-          Mi MART
+          {storeSettings.store_name || 'Mi MART'}
         </Link>
 
         {/* <Dropdown menu={categoryMenu} trigger={['click']}>
