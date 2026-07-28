@@ -156,22 +156,7 @@ const AdminProducts = () => {
     p => productNameVal && p.product_name.toLowerCase() === productNameVal.trim().toLowerCase() && p.product_id !== editingProduct?.product_id
   );
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [prodRes, catRes, brandRes] = await Promise.all([getProducts({
-        limit: 100
-      }), getCategories(), getBrands()]);
-      setProducts(prodRes.data.products || []);
-      setCategories(catRes.data || []);
-      setBrands(brandRes.data || []);
-    } catch {/* API not available */} finally {
-      setLoading(false);
-    }
-  };
+
 
   const compressImage = (file) => {
     return new Promise((resolve, reject) => {
