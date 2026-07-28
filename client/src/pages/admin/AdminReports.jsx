@@ -42,6 +42,7 @@ const AdminReports = () => {
   const [customerData, setCustomerData] = useState({ topCustomers: [], inactiveCustomers: [], ratio: {} });
   const [cartData, setCartData] = useState([]);
   const [couponData, setCouponData] = useState([]);
+  const [opData, setOpData] = useState({ deliverySlots: [], inventoryLogs: [] });
   const [activeTab, setActiveTab] = useState('sales');
 
   const handleExportTab = () => {
