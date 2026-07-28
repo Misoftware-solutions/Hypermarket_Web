@@ -342,10 +342,6 @@ const AdminProducts = () => {
               } else {
                 setFileList([]);
               }
-            } catch (err) {
-              if (r.primary_image) {
-                setFileList([{ uid: '-1', name: 'primary_image.png', status: 'done', url: r.primary_image }]);
-              }
             }
           }} style={{
         color: '#1890ff'
@@ -353,6 +349,43 @@ const AdminProducts = () => {
           <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(r.product_id)} />
         </Space>
   }];
+
+  const handleMrpChange = (val) => {
+    const mrp = Number(val) || 0;
+    const sp = form.getFieldValue('selling_price');
+    const offerPct = form.getFieldValue('offer_percentage');
+
+    if (mrp > 0) {
+      if (sp !== undefined && sp !== null && sp !== '') {
+        const calculatedOffer = Math.max(0, Math.min(100, Math.round(((mrp - Number(sp)) / mrp) * 100)));
+        form.setFieldValue('offer_percentage', calculatedOffer);
+      } else if (offerPct !== undefined && offerPct !== null && offerPct !== '') {
+        const calculatedSp = Math.round(mrp * (1 - Number(offerPct) / 100));
+        form.setFieldValue('selling_price', calculatedSp);
+      }
+    }
+  };
+
+  const handleSellingPriceChange = (val) => {
+    const sp = Number(val) || 0;
+    const mrp = form.getFieldValue('mrp');
+
+    if (mrp && Number(mrp) > 0) {
+      const calculatedOffer = Math.max(0, Math.min(100, Math.round(((Number(mrp) - sp) / Number(mrp)) * 100)));
+      form.setFieldValue('offer_percentage', calculatedOffer);
+    }
+  };
+
+  const handleOfferPctChange = (val) => {
+    const offerPct = Number(val) || 0;
+    const mrp = form.getFieldValue('mrp');
+
+    if (mrp && Number(mrp) > 0) {
+      const calculatedSp = Math.round(Number(mrp) * (1 - offerPct / 100));
+      form.setFieldValue('selling_price', calculatedSp);
+    }
+  };
+
   return <div>
       <Row gutter={16} className="mb-4">
         {[{
