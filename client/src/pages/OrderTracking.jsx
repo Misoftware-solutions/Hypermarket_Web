@@ -72,36 +72,52 @@ const OrderTracking = () => {
 
   const handlePrint = () => {
     const printContent = document.getElementById('receipt-print-area').innerHTML;
-    const printWindow = window.open('about:blank', 'PrintReceipt', 'width=800,height=600');
+    const printWindow = window.open('', '_blank', 'width=850,height=900');
     
     printWindow.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>E-Receipt - ${order.order_number}</title>
+          <title>E-Receipt_${order.order_number}</title>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 30px; color: #333; line-height: 1.5; }
-            .receipt-header { text-align: center; margin-bottom: 25px; border-bottom: 2px dashed #ddd; padding-bottom: 15px; }
-            .receipt-title { font-size: 26px; font-weight: bold; margin-bottom: 5px; color: #1890ff; }
-            .store-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-            .meta-info { display: flex; justify-content: space-between; margin-bottom: 25px; font-size: 14px; color: #555; }
-            .meta-col { display: flex; flex-direction: column; }
-            .address-box { margin-bottom: 25px; font-size: 14px; background-color: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-            th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
-            th { background-color: #fcfcfc; font-weight: 600; color: #555; }
-            .summary { margin-left: auto; width: 320px; font-size: 14px; }
+            @media print {
+              @page { margin: 10mm; size: auto; }
+              body { margin: 0; background: #fff !important; }
+            }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+              padding: 24px; 
+              color: #262626; 
+              background: #fff;
+              max-width: 700px;
+              margin: 0 auto;
+            }
+            .receipt-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 16px; margin-bottom: 20px; }
+            .store-name { font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+            .store-info { font-size: 12px; color: #595959; line-height: 1.4; }
+            .receipt-badge { display: inline-block; background: #000; color: #fff; padding: 4px 12px; font-weight: 700; font-size: 12px; border-radius: 4px; margin-top: 8px; text-transform: uppercase; }
+            .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 13px; border-bottom: 1px dashed #ccc; padding-bottom: 16px; }
+            .meta-box strong { display: block; font-size: 11px; text-transform: uppercase; color: #8c8c8c; margin-bottom: 4px; letter-spacing: 0.5px; }
+            .meta-box div { color: #1f1f1f; line-height: 1.4; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+            th { text-align: left; padding: 8px; border-bottom: 2px solid #262626; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; color: #595959; }
+            td { padding: 10px 8px; border-bottom: 1px solid #f0f0f0; }
+            .summary-table { width: 280px; margin-left: auto; font-size: 13px; }
             .summary-row { display: flex; justify-content: space-between; padding: 6px 0; }
-            .total-row { font-size: 18px; font-weight: bold; border-top: 2px double #333; padding-top: 10px; margin-top: 8px; color: #1890ff; }
-            .footer { text-align: center; margin-top: 50px; font-size: 12px; color: #888; border-top: 1px dashed #ccc; padding-top: 20px; }
+            .total-row { font-size: 16px; font-weight: 800; border-top: 2px solid #000; border-bottom: 2px double #000; padding: 10px 0; margin-top: 6px; }
+            .receipt-footer { text-align: center; margin-top: 30px; border-top: 1px dashed #ccc; padding-top: 16px; font-size: 12px; color: #595959; }
           </style>
         </head>
         <body>
           ${printContent}
           <script>
             window.onload = function() {
-              window.print();
-              window.close();
-            }
+              setTimeout(function() {
+                window.focus();
+                window.print();
+                window.close();
+              }, 400);
+            };
           </script>
         </body>
       </html>
@@ -247,35 +263,38 @@ const OrderTracking = () => {
         width={650}
         bodyStyle={{ padding: '20px' }}
       >
-        <div id="receipt-print-area">
+        <div id="receipt-print-area" style={{ background: '#fff', padding: '10px' }}>
+          {/* Header */}
           <div className="receipt-header">
-            <div className="receipt-title">E-RECEIPT</div>
             <div className="store-name">{storeSettings.store_name}</div>
-            <div style={{ fontSize: '13px', color: '#555' }}>
+            <div className="store-info">
               {storeSettings.address}, {storeSettings.city}, {storeSettings.state} - {storeSettings.pincode}<br />
-              Phone: {storeSettings.phone} | Email: {storeSettings.email}
+              Tel: {storeSettings.phone} | Email: {storeSettings.email}
+            </div>
+            <div className="receipt-badge">TAX INVOICE / DIGITAL RECEIPT</div>
+          </div>
+
+          {/* Metadata Grid */}
+          <div className="meta-grid">
+            <div className="meta-box">
+              <strong>Order Details</strong>
+              <div>Order No: <span style={{ fontWeight: 700 }}>{order.order_number}</span></div>
+              <div>Date: {new Date(order.created_at).toLocaleString()}</div>
+              <div>Payment: {order.payment_method?.toUpperCase() || 'COD'} ({order.payment_status})</div>
+            </div>
+            <div className="meta-box" style={{ textAlign: 'right' }}>
+              <strong>Customer & Shipping</strong>
+              <div style={{ fontWeight: 600 }}>{order.customer_name}</div>
+              <div>Phone: {order.phone_number}</div>
+              <div style={{ fontSize: '12px', color: '#595959' }}>{order.delivery_address}</div>
             </div>
           </div>
 
-          <div className="meta-info">
-            <div className="meta-col">
-              <strong>Order Details:</strong>
-              <span>Order No: {order.order_number}</span>
-              <span>Date: {new Date(order.created_at).toLocaleDateString()}</span>
-              <span>Payment: {order.payment_method?.toUpperCase() || 'COD'} ({order.payment_status})</span>
-            </div>
-            <div className="meta-col" style={{ textAlign: 'right' }}>
-              <strong>Customer Address:</strong>
-              <span>{order.customer_name}</span>
-              <span>{order.phone_number}</span>
-              <span style={{ maxWidth: '250px', wordBreak: 'break-word' }}>{order.delivery_address}</span>
-            </div>
-          </div>
-
+          {/* Items Table */}
           <table>
             <thead>
               <tr>
-                <th>Item Description</th>
+                <th style={{ width: '50%' }}>Item Description</th>
                 <th style={{ textAlign: 'right' }}>Price</th>
                 <th style={{ textAlign: 'center' }}>Qty</th>
                 <th style={{ textAlign: 'right' }}>Total</th>
@@ -285,44 +304,48 @@ const OrderTracking = () => {
               {(order.items || []).map((item, index) => (
                 <tr key={index}>
                   <td>
-                    {item.product_name}
-                    {item.size && <div style={{ fontSize: '11px', color: '#8c8c8c' }}>Size: {item.size}</div>}
+                    <strong style={{ color: '#262626' }}>{item.product_name}</strong>
+                    {item.size && <div style={{ fontSize: '11px', color: '#8c8c8c' }}>{item.size}</div>}
                   </td>
                   <td style={{ textAlign: 'right' }}>₹{Number(item.unit_price)}</td>
-                  <td style={{ textAlign: 'center' }}>{Number(item.qty)}</td>
-                  <td style={{ textAlign: 'right' }}>₹{Number(item.qty) * Number(item.unit_price)}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 600 }}>{Number(item.qty)}</td>
+                  <td style={{ textAlign: 'right', fontWeight: 600 }}>₹{Number(item.qty) * Number(item.unit_price)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
-          <div className="summary">
+          {/* Summary Calculation */}
+          <div className="summary-table">
             <div className="summary-row">
-              <span>Subtotal</span>
+              <span>Items Subtotal:</span>
               <span>₹{itemsSubtotal}</span>
             </div>
             
             {storeSettings.show_tax_breakup === 'true' && (
               <div className="summary-row">
-                <span>Tax ({storeSettings.default_tax}%)</span>
+                <span>Tax ({storeSettings.default_tax}% GST):</span>
                 <span>₹{calculatedTax}</span>
               </div>
             )}
 
             <div className="summary-row">
-              <span>Delivery Charge</span>
-              <span>₹{Number(order.grand_total) - itemsSubtotal - (storeSettings.show_tax_breakup === 'true' ? calculatedTax : 0)}</span>
+              <span>Delivery Charge:</span>
+              <span>₹{Math.max(0, Number(order.grand_total) - itemsSubtotal - (storeSettings.show_tax_breakup === 'true' ? calculatedTax : 0))}</span>
             </div>
 
             <div className="summary-row total-row">
-              <span>Grand Total</span>
+              <span>GRAND TOTAL:</span>
               <span>₹{Number(order.grand_total)}</span>
             </div>
           </div>
 
-          <div className="footer">
-            Thank you for shopping with {storeSettings.store_name}!<br />
-            This is a computer generated digital E-Receipt. No physical signature is required.
+          {/* Footer */}
+          <div className="receipt-footer">
+            <div>Thank you for shopping with <strong>{storeSettings.store_name}</strong>!</div>
+            <div style={{ fontSize: '11px', marginTop: '4px', color: '#8c8c8c' }}>
+              This is an official computer-generated receipt. GST invoice terms apply.
+            </div>
           </div>
         </div>
       </Modal>
