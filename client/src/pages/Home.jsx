@@ -10,8 +10,11 @@ const {
   Text,
   Paragraph
 } = Typography;
+import { useAuthModal } from '../context/AuthModalContext';
+
 const Home = () => {
   const navigate = useNavigate();
+  const { openAuthDrawer } = useAuthModal();
   const [categories, setCategories] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [banners, setBanners] = useState([]);
@@ -22,8 +25,25 @@ const Home = () => {
     e.preventDefault(); // Stop Link navigation from triggering
     const userString = sessionStorage.getItem('user');
     if (!userString) {
-      message.warning('Please log in to add items to your cart.');
-      navigate('/login');
+      openAuthDrawer({
+        message: 'Please log in to add items to your cart.',
+        onSuccess: async (loggedInUser) => {
+          setAddingCartId(productId);
+          try {
+            await addToCart({
+              customer_id: loggedInUser.id,
+              product_id: productId,
+              qty: 1
+            });
+            message.success('Item added to cart!');
+            window.dispatchEvent(new Event('cartChange'));
+          } catch (err) {
+            message.error(err.response?.data?.message || 'Failed to add item to cart.');
+          } finally {
+            setAddingCartId(null);
+          }
+        }
+      });
       return;
     }
     setAddingCartId(productId);

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Table, InputNumber, Button, Typography, Card, Divider, Input, Tag, Empty, Spin, message } from 'antd';
 import { DeleteOutlined, ShoppingOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCart, updateCartItem, removeCartItem } from '../services/api';
+import { getCart, updateCartItem, removeCartItem, getSettings } from '../services/api';
+import { useAuthModal } from '../context/AuthModalContext';
 
 const {
   Title,
@@ -11,8 +12,14 @@ const {
 
 const Cart = () => {
   const navigate = useNavigate();
+  const { openAuthDrawer } = useAuthModal();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [storeSettings, setStoreSettings] = useState({
+    default_tax: 5,
+    free_delivery_threshold: 500,
+    delivery_charge: 40,
+  });
 
   const userString = sessionStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : null;
@@ -42,6 +49,15 @@ const Cart = () => {
 
   useEffect(() => {
     fetchCart();
+    getSettings().then(res => {
+      if (res.data) {
+        setStoreSettings({
+          default_tax: Number(res.data.default_tax || 5),
+          free_delivery_threshold: Number(res.data.free_delivery_threshold || 500),
+          delivery_charge: Number(res.data.delivery_charge || 40),
+        });
+      }
+    }).catch(() => {});
   }, []);
 
   const updateQty = async (key, qty) => {
@@ -68,8 +84,8 @@ const Cart = () => {
   };
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const tax = Math.round(subtotal * 0.05);
-  const delivery = subtotal > 500 ? 0 : 40;
+  const tax = Math.round(subtotal * (storeSettings.default_tax / 100));
+  const delivery = subtotal > storeSettings.free_delivery_threshold ? 0 : storeSettings.delivery_charge;
   const total = subtotal + tax + delivery;
 
   const columns = [{
@@ -112,7 +128,7 @@ const Cart = () => {
       minHeight: 'calc(100vh - 64px)'
     }}>
         <Empty description="You must be logged in to view your cart" />
-        <Button type="primary" size="large" className="mt-3" icon={<UserOutlined />} onClick={() => navigate('/login')}>Login Now</Button>
+        <Button type="primary" size="large" className="mt-3" icon={<UserOutlined />} onClick={() => openAuthDrawer({ message: 'Log in to view and manage your shopping cart' })}>Login Now</Button>
       </div>;
   }
 
@@ -146,7 +162,7 @@ const Cart = () => {
             <Title level={4}>Order Summary</Title>
             <Divider />
             <div className="d-flex justify-content-between mb-2"><Text>Subtotal</Text><Text>₹{subtotal}</Text></div>
-            <div className="d-flex justify-content-between mb-2"><Text>Tax (5%)</Text><Text>₹{tax}</Text></div>
+            <div className="d-flex justify-content-between mb-2"><Text>Tax ({storeSettings.default_tax}%)</Text><Text>₹{tax}</Text></div>
             <div className="d-flex justify-content-between mb-2"><Text>Delivery</Text>{delivery === 0 ? <Tag color="green">FREE</Tag> : <Text>₹{delivery}</Text>}</div>
             <Divider />
             <div className="d-flex justify-content-between mb-3"><Title level={4} style={{

@@ -31,6 +31,7 @@ const bannerRoutes = require('./src/routes/bannerRoutes');
 const authRoutes = require('./src/routes/authRoutes');
 const inventoryRoutes = require('./src/routes/inventoryRoutes');
 const customerRoutes = require('./src/routes/customerRoutes');
+const settingsRoutes = require('./src/routes/settingsRoutes');
 
 app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
@@ -42,6 +43,7 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Start server
 app.listen(PORT, () => {

@@ -32,6 +32,9 @@ const AdminInventory = lazy(() => import('./pages/admin/AdminInventory'));
 const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+import { AuthModalProvider } from './context/AuthModalContext';
+import LoginDrawer from './components/LoginDrawer';
+
 const AdminBanners = lazy(() => import('./pages/admin/AdminBanners'));
 const LoadingFallback = () => <div className="d-flex justify-content-center align-items-center" style={{
   minHeight: '60vh'
@@ -47,11 +50,13 @@ function App() {
       fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif'
     }
   }}>
-      <Router>
-        <ScrollToTop />
-        <Navbar />
-        <ErrorBoundary>
-          <Suspense fallback={<LoadingFallback />}>
+      <AuthModalProvider>
+        <Router>
+          <ScrollToTop />
+          <Navbar />
+          <LoginDrawer />
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* Customer Routes */}
               <Route path="/" element={<Home />} />
@@ -84,6 +89,7 @@ function App() {
         </ErrorBoundary>
         <Footer />
       </Router>
-    </ConfigProvider>;
+    </AuthModalProvider>
+  </ConfigProvider>;
 }
 export default App;

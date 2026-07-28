@@ -76,6 +76,7 @@ exports.getAllProducts = async (req, res) => {
 // Get product by ID
 exports.getProductById = async (req, res) => {
     try {
+        console.log("LOG: getProductById called for ID:", req.params.id);
         const [rows] = await db.query(`
             SELECT p.*, c.category_name, b.brand_name, u.unit_name,
                    COALESCE(i.available_qty, 0) as stock_qty
@@ -200,6 +201,111 @@ exports.uploadProductImage = async (req, res) => {
         fs.writeFileSync(publicFilePath, buffer);
 
         res.json({ success: true, url: fileData });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getProductSuggestions = async (req, res) => {
+    try {
+        const { q } = req.query;
+        console.log("LOG: getProductSuggestions called with query:", q);
+        if (!q || !q.trim()) {
+            return res.json({ suggestions: [], products: [] });
+        }
+        const term = q.trim();
+
+        // 1. Fetch matching popular keywords from search_suggestions
+        const [suggestedKeywords] = await db.query(
+            'SELECT keyword FROM search_suggestions WHERE keyword LIKE ? AND is_active = 1 ORDER BY search_count DESC LIMIT 5',
+            [`%${term}%`]
+        );
+
+        // Combine category templates (e.g. "term in CategoryName")
+        const suggestions = suggestedKeywords.map(k => k.keyword);
+        
+        // Also find categories and suggest "term in CategoryName"
+        const [anyCategories] = await db.query('SELECT category_id, category_name FROM categories WHERE is_active = 1 LIMIT 4');
+        anyCategories.forEach(cat => {
+            suggestions.push(`${term} in ${cat.category_name}`);
+        });
+
+        // 3. Fetch matching products directly
+        const [matchingProducts] = await db.query(
+            `SELECT p.product_id, p.product_name, c.category_name 
+             FROM products p
+             LEFT JOIN categories c ON p.category_id = c.category_id
+             WHERE p.product_name LIKE ? AND p.is_active = 1 
+             LIMIT 5`,
+            [`%${term}%`]
+        );
+
+        res.json({
+            suggestions: [...new Set(suggestions)].slice(0, 8),
+            products: matchingProducts.map(p => ({
+                id: p.product_id,
+                name: p.product_name,
+                category: p.category_name
+            }))
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.recordSearch = async (req, res) => {
+    try {
+        const { keyword } = req.body;
+        if (!keyword || !keyword.trim()) {
+            return res.status(400).json({ error: 'Keyword is required' });
+        }
+        const term = keyword.trim().toLowerCase();
+        await db.query(
+            'INSERT INTO search_suggestions (keyword, search_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE search_count = search_count + 1',
+            [term]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getProductReviews = async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            `SELECT pr.review_id, pr.rating, pr.title, pr.review_text, pr.created_at, c.customer_name 
+             FROM product_reviews pr
+             LEFT JOIN customers c ON pr.customer_id = c.customer_id
+             WHERE pr.product_id = ? AND pr.is_approved = 1
+             ORDER BY pr.created_at DESC`,
+            [req.params.id]
+        );
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.createProductReview = async (req, res) => {
+    try {
+        const { rating, title, review_text, customer_id } = req.body;
+        const productId = req.params.id;
+
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+        }
+        if (!customer_id) {
+            return res.status(400).json({ error: 'Customer ID is required' });
+        }
+
+        await db.query(
+            `INSERT INTO product_reviews (product_id, customer_id, rating, title, review_text) 
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE rating = VALUES(rating), title = VALUES(title), review_text = VALUES(review_text)`,
+            [productId, customer_id, rating, title || null, review_text || null]
+        );
+
+        res.status(201).json({ message: 'Review saved successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

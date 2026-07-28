@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Steps, Card, Radio, Button, Typography, Divider, Form, Input, Select, Row, Col, Tag, Space, Spin, Modal, Tabs, message } from 'antd';
 import { EnvironmentOutlined, ClockCircleOutlined, CreditCardOutlined, CheckCircleOutlined, LockOutlined, QrcodeOutlined, BankOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
-import { getCart, getCustomerById, createOrder, addCustomerAddress } from '../services/api';
+import { getCart, getCustomerById, createOrder, addCustomerAddress, getSettings } from '../services/api';
 
 const {
   Title,
@@ -22,6 +22,13 @@ const Checkout = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState('slot1');
+  const [storeSettings, setStoreSettings] = useState({
+    default_tax: 5,
+    free_delivery_threshold: 500,
+    delivery_charge: 40,
+    express_delivery_charge: 30,
+    min_order_amount: 200,
+  });
 
   // Dummy Payment Gateway Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -41,10 +48,21 @@ const Checkout = () => {
 
     const loadData = async () => {
       try {
-        const [cartRes, customerRes] = await Promise.all([
+        const [cartRes, customerRes, settingsRes] = await Promise.all([
           getCart(user.id),
-          getCustomerById(user.id)
+          getCustomerById(user.id),
+          getSettings().catch(() => ({ data: {} }))
         ]);
+
+        if (settingsRes && settingsRes.data) {
+          setStoreSettings({
+            default_tax: Number(settingsRes.data.default_tax || 5),
+            free_delivery_threshold: Number(settingsRes.data.free_delivery_threshold || 500),
+            delivery_charge: Number(settingsRes.data.delivery_charge || 40),
+            express_delivery_charge: Number(settingsRes.data.express_delivery_charge || 30),
+            min_order_amount: Number(settingsRes.data.min_order_amount || 200),
+          });
+        }
 
         // Load cart items
         const items = (cartRes.data.items || []).map(item => ({
@@ -93,9 +111,9 @@ const Checkout = () => {
   }, []);
 
   const subtotal = cartItems.reduce((s, item) => s + item.price * item.qty, 0);
-  const tax = Math.round(subtotal * 0.05);
-  const baseDelivery = subtotal > 500 ? 0 : 40;
-  const expressFee = selectedSlot === 'slot1' ? 30 : 0;
+  const tax = Math.round(subtotal * (storeSettings.default_tax / 100));
+  const baseDelivery = subtotal > storeSettings.free_delivery_threshold ? 0 : storeSettings.delivery_charge;
+  const expressFee = selectedSlot === 'slot1' ? storeSettings.express_delivery_charge : 0;
   const delivery = baseDelivery + expressFee;
   const total = subtotal + tax + delivery;
 
@@ -374,7 +392,7 @@ const Checkout = () => {
             ))}
             <Divider />
             <div className="d-flex justify-content-between mb-1"><Text>Subtotal</Text><Text>₹{subtotal}</Text></div>
-            <div className="d-flex justify-content-between mb-1"><Text>Tax</Text><Text>₹{tax}</Text></div>
+            <div className="d-flex justify-content-between mb-1"><Text>Tax ({storeSettings.default_tax}%)</Text><Text>₹{tax}</Text></div>
             <div className="d-flex justify-content-between mb-1"><Text>Delivery</Text>{delivery === 0 ? <Tag color="green">FREE</Tag> : <Text>₹{delivery}</Text>}</div>
             <Divider />
             <div className="d-flex justify-content-between"><Title level={4} style={{

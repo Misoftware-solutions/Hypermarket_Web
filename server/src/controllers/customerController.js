@@ -76,4 +76,44 @@ exports.addAddress = async (req, res) => {
     }
 };
 
+exports.deleteAddress = async (req, res) => {
+    try {
+        const { addressId } = req.params;
+        await db.query('DELETE FROM customer_addresses WHERE address_id = ? AND customer_id = ?', [addressId, req.params.id]);
+        res.json({ message: 'Address deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.setDefaultAddress = async (req, res) => {
+    try {
+        const { addressId } = req.params;
+        await db.query('UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ?', [req.params.id]);
+        await db.query('UPDATE customer_addresses SET is_default = 1 WHERE address_id = ? AND customer_id = ?', [addressId, req.params.id]);
+        res.json({ message: 'Default address updated' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.updateAddress = async (req, res) => {
+    try {
+        const { addressId } = req.params;
+        const { label = 'Home', address_line1, address_line2 = '', city, state = 'Karnataka', pincode } = req.body;
+        if (!address_line1 || !city || !pincode) {
+            return res.status(400).json({ message: 'Address line 1, city, and pincode are required' });
+        }
+        await db.query(
+            `UPDATE customer_addresses 
+             SET label = ?, address_line1 = ?, address_line2 = ?, city = ?, state = ?, pincode = ? 
+             WHERE address_id = ? AND customer_id = ?`,
+            [label, address_line1, address_line2, city, state, pincode, addressId, req.params.id]
+        );
+        res.json({ message: 'Address updated successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 

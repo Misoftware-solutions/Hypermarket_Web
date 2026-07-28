@@ -29,6 +29,10 @@ export const getProducts = params => API.get('/products', {
   params
 });
 export const getProductById = id => API.get(`/products/${id}`);
+export const getProductReviews = id => API.get(`/products/${id}/reviews`);
+export const createProductReview = (id, data) => API.post(`/products/${id}/reviews`, data);
+export const getProductSuggestions = q => API.get('/products/suggestions', { params: { q } });
+export const recordSearch = keyword => API.post('/products/search-record', { keyword });
 export const createProduct = data => API.post('/products', data);
 export const uploadProductImage = data => API.post('/products/upload', data);
 export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
@@ -90,5 +94,12 @@ export const getCustomers = params => API.get('/customers', {
 export const getCustomerById = id => API.get(`/customers/${id}`);
 export const updateCustomer = (id, data) => API.put(`/customers/${id}`, data);
 export const addCustomerAddress = (id, data) => API.post(`/customers/${id}/addresses`, data);
+export const deleteCustomerAddress = (id, addressId) => API.delete(`/customers/${id}/addresses/${addressId}`);
+export const setCustomerDefaultAddress = (id, addressId) => API.put(`/customers/${id}/addresses/${addressId}/default`);
+export const updateCustomerAddress = (id, addressId, data) => API.put(`/customers/${id}/addresses/${addressId}`, data);
+
+// Settings
+export const getSettings = () => API.get('/settings');
+export const updateSettings = data => API.put('/settings', data);
 
 export default API;
