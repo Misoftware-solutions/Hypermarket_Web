@@ -114,4 +114,10 @@ export const getCartAbandonmentReport = () => API.get('/reports/cart-abandonment
 export const getCouponAnalyticsReport = () => API.get('/reports/coupon-analytics');
 export const getOperationalReport = () => API.get('/reports/operational-logistics');
 
+// Purchases & Suppliers
+export const getSuppliers = () => API.get('/purchases/suppliers');
+export const createSupplier = data => API.post('/purchases/suppliers', data);
+export const getPurchaseOrders = () => API.get('/purchases');
+export const createPurchaseOrder = data => API.post('/purchases', data);
+
 export default API;

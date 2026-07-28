@@ -33,6 +33,7 @@ const inventoryRoutes = require('./src/routes/inventoryRoutes');
 const customerRoutes = require('./src/routes/customerRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
+const purchaseRoutes = require('./src/routes/purchaseRoutes');
 
 app.use('/api/categories', categoryRoutes);
 app.use('/api/products', productRoutes);
@@ -46,6 +47,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/purchases', purchaseRoutes);
 
 // Start server
 app.listen(PORT, () => {
