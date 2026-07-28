@@ -26,8 +26,11 @@ exports.getAllOrders = async (req, res) => {
 exports.getOrderById = async (req, res) => {
     try {
         const [order] = await db.query(`
-            SELECT o.*, c.customer_name, c.mobile, c.email
-            FROM orders o LEFT JOIN customers c ON o.customer_id = c.customer_id
+            SELECT o.*, c.customer_name, c.mobile, c.email,
+                   a.address_line1, a.address_line2, a.city, a.state, a.pincode
+            FROM orders o 
+            LEFT JOIN customers c ON o.customer_id = c.customer_id
+            LEFT JOIN customer_addresses a ON o.delivery_address_id = a.address_id
             WHERE o.order_id = ? OR o.order_number = ?
         `, [req.params.id, req.params.id]);
         if (order.length === 0) return res.status(404).json({ message: 'Order not found' });
