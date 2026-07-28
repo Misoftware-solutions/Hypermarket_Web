@@ -109,5 +109,8 @@ export const getProductPerformanceReport = () => API.get('/reports/product-perfo
 export const getInventoryReportData = () => API.get('/reports/inventory-health');
 export const getTaxReport = () => API.get('/reports/tax-summary');
 export const getProfitReport = () => API.get('/reports/profit-margins');
+export const getCustomerMetricsReport = () => API.get('/reports/customer-metrics');
+export const getCartAbandonmentReport = () => API.get('/reports/cart-abandonment');
+export const getCouponAnalyticsReport = () => API.get('/reports/coupon-analytics');
 
 export default API;

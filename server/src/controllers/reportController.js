@@ -236,3 +236,113 @@ exports.getProfitReport = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// Get Customer Metrics (CLV, Top Customers, Inactive Customers, New vs Returning)
+exports.getCustomerMetrics = async (req, res) => {
+    try {
+        const [topCustomers] = await db.query(`
+            SELECT 
+                c.customer_id,
+                c.customer_name,
+                c.mobile,
+                c.email,
+                COALESCE(c.loyalty_points, 0) as loyalty_points,
+                COALESCE(c.wallet_balance, 0) as wallet_balance,
+                COUNT(o.order_id) as total_orders,
+                COALESCE(SUM(o.grand_total), 0) as total_spend,
+                MAX(o.created_at) as last_order_date
+            FROM customers c
+            JOIN orders o ON c.customer_id = o.customer_id
+            GROUP BY c.customer_id
+            ORDER BY total_spend DESC
+            LIMIT 10
+        `);
+
+        const [inactiveCustomers] = await db.query(`
+            SELECT 
+                c.customer_id,
+                c.customer_name,
+                c.mobile,
+                c.email,
+                MAX(o.created_at) as last_order_date,
+                DATEDIFF(NOW(), MAX(o.created_at)) as days_inactive
+            FROM customers c
+            JOIN orders o ON c.customer_id = o.customer_id
+            GROUP BY c.customer_id
+            HAVING days_inactive >= 30
+            ORDER BY days_inactive DESC
+            LIMIT 10
+        `);
+
+        const [customerRatio] = await db.query(`
+            SELECT 
+                COUNT(DISTINCT c.customer_id) as total_customers,
+                COUNT(DISTINCT CASE WHEN order_count = 1 THEN c.customer_id END) as one_time_customers,
+                COUNT(DISTINCT CASE WHEN order_count > 1 THEN c.customer_id END) as repeat_customers
+            FROM (
+                SELECT customer_id, COUNT(order_id) as order_count
+                FROM orders
+                GROUP BY customer_id
+            ) order_counts
+            RIGHT JOIN customers c ON order_counts.customer_id = c.customer_id
+        `);
+
+        res.json({
+            topCustomers,
+            inactiveCustomers,
+            ratio: customerRatio[0]
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Get Cart Abandonment Report
+exports.getCartAbandonment = async (req, res) => {
+    try {
+        const [abandonedCarts] = await db.query(`
+            SELECT 
+                sc.cart_id,
+                c.customer_name,
+                c.mobile,
+                sc.created_at as cart_created_at,
+                COUNT(sci.cart_item_id) as item_count,
+                COALESCE(SUM(sci.qty * p.selling_price), 0) as estimated_cart_value
+            FROM shopping_cart sc
+            JOIN customers c ON sc.customer_id = c.customer_id
+            JOIN shopping_cart_items sci ON sc.cart_id = sci.cart_id
+            JOIN products p ON sci.product_id = p.product_id
+            GROUP BY sc.cart_id
+            ORDER BY sc.created_at DESC
+        `);
+
+        res.json(abandonedCarts);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Get Coupon Performance Analytics
+exports.getCouponAnalytics = async (req, res) => {
+    try {
+        const [coupons] = await db.query(`
+            SELECT 
+                code,
+                discount_type,
+                discount_value,
+                usage_limit,
+                used_count,
+                (usage_limit - used_count) as remaining_limit,
+                is_active,
+                valid_from,
+                valid_to
+            FROM coupons
+            ORDER BY used_count DESC
+        `);
+
+        res.json(coupons);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+

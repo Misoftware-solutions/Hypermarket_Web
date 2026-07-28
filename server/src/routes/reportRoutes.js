@@ -9,5 +9,8 @@ router.get('/product-performance', reportController.getProductPerformance);
 router.get('/inventory-health', reportController.getInventoryReport);
 router.get('/tax-summary', reportController.getTaxReport);
 router.get('/profit-margins', reportController.getProfitReport);
+router.get('/customer-metrics', reportController.getCustomerMetrics);
+router.get('/cart-abandonment', reportController.getCartAbandonment);
+router.get('/coupon-analytics', reportController.getCouponAnalytics);
 
 module.exports = router;

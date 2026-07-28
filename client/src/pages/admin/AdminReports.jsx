@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Card, Row, Col, Typography, Table, Tag, Tabs, Select, Statistic, Spin, Alert, Progress } from 'antd';
-import { DollarOutlined, ShoppingCartOutlined, LineChartOutlined, PercentageOutlined, FileTextOutlined, WarningOutlined } from '@ant-design/icons';
+import { DollarOutlined, ShoppingCartOutlined, LineChartOutlined, PercentageOutlined, FileTextOutlined, WarningOutlined, UserOutlined, TagOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { 
   getSalesReport, 
   getCategoryBrandReport, 
   getProductPerformanceReport, 
   getInventoryReportData, 
   getTaxReport, 
-  getProfitReport 
+  getProfitReport,
+  getCustomerMetricsReport,
+  getCartAbandonmentReport,
+  getCouponAnalyticsReport
 } from '../../services/api';
 
 const { Title, Text } = Typography;
@@ -21,6 +24,9 @@ const AdminReports = () => {
   const [invData, setInvData] = useState({ lowStock: [], valuation: {} });
   const [taxData, setTaxData] = useState([]);
   const [profitData, setProfitData] = useState([]);
+  const [customerData, setCustomerData] = useState({ topCustomers: [], inactiveCustomers: [], ratio: {} });
+  const [cartData, setCartData] = useState([]);
+  const [couponData, setCouponData] = useState([]);
 
   useEffect(() => {
     fetchAllReports();
@@ -29,13 +35,16 @@ const AdminReports = () => {
   const fetchAllReports = async () => {
     setLoading(true);
     try {
-      const [salesRes, catBrandRes, prodPerfRes, invRes, taxRes, profitRes] = await Promise.all([
+      const [salesRes, catBrandRes, prodPerfRes, invRes, taxRes, profitRes, custRes, cartRes, couponRes] = await Promise.all([
         getSalesReport(period),
         getCategoryBrandReport(),
         getProductPerformanceReport(),
         getInventoryReportData(),
         getTaxReport(),
-        getProfitReport()
+        getProfitReport(),
+        getCustomerMetricsReport(),
+        getCartAbandonmentReport(),
+        getCouponAnalyticsReport()
       ]);
 
       setSalesData(salesRes.data);
@@ -44,6 +53,9 @@ const AdminReports = () => {
       setInvData(invRes.data);
       setTaxData(taxRes.data);
       setProfitData(profitRes.data);
+      setCustomerData(custRes.data);
+      setCartData(cartRes.data);
+      setCouponData(couponRes.data);
     } catch (err) {
       console.error('Failed to load ERP reports:', err);
     } finally {
@@ -92,7 +104,7 @@ const AdminReports = () => {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div>
           <Title level={3} style={{ margin: 0 }}>Business Reports & ERP Analytics</Title>
-          <Text type="secondary">Real-time financial, inventory, sales, and GST compliance reports</Text>
+          <Text type="secondary">Real-time financial, inventory, sales, customer, and marketing analytics</Text>
         </div>
         <Select value={period} onChange={setPeriod} style={{ width: 160 }}>
           <Select.Option value="7days">Last 7 Days</Select.Option>
@@ -289,6 +301,103 @@ const AdminReports = () => {
                       pagination={{ pageSize: 10 }}
                     />
                   </Card>
+                )
+              },
+              {
+                key: 'customers',
+                label: <span><UserOutlined /> Customer Insights & CLV</span>,
+                children: (
+                  <div>
+                    <Row gutter={16} className="mb-4">
+                      <Col span={8}>
+                        <Card style={{ borderRadius: 12, background: '#e6f7ff' }}>
+                          <Statistic title="Total Registered Customers" value={customerData.ratio.total_customers || 0} />
+                        </Card>
+                      </Col>
+                      <Col span={8}>
+                        <Card style={{ borderRadius: 12, background: '#f6ffed' }}>
+                          <Statistic title="Repeat Customers" value={customerData.ratio.repeat_customers || 0} valueStyle={{ color: '#52c41a' }} />
+                        </Card>
+                      </Col>
+                      <Col span={8}>
+                        <Card style={{ borderRadius: 12, background: '#fff2e8' }}>
+                          <Statistic title="One-Time Buyers" value={customerData.ratio.one_time_customers || 0} valueStyle={{ color: '#fa8c16' }} />
+                        </Card>
+                      </Col>
+                    </Row>
+
+                    <Row gutter={16}>
+                      <Col span={14}>
+                        <Card title="🏆 Top Customers by Spend (Customer Lifetime Value)" style={{ borderRadius: 12 }}>
+                          <Table 
+                            columns={[
+                              { title: 'Customer', dataIndex: 'customer_name', render: v => <Text strong>{v}</Text> },
+                              { title: 'Mobile', dataIndex: 'mobile' },
+                              { title: 'Orders', dataIndex: 'total_orders' },
+                              { title: 'Loyalty Points', dataIndex: 'loyalty_points', render: v => <Tag color="gold">{v} pts</Tag> },
+                              { title: 'Total Spend', dataIndex: 'total_spend', render: v => <Text strong style={{ color: '#52c41a' }}>₹{v}</Text> }
+                            ]}
+                            dataSource={customerData.topCustomers.map((c, i) => ({ ...c, key: i }))}
+                            pagination={false}
+                            size="small"
+                          />
+                        </Card>
+                      </Col>
+                      <Col span={10}>
+                        <Card title="💤 Inactive Customers (No orders in >30 days)" style={{ borderRadius: 12 }}>
+                          <Table 
+                            columns={[
+                              { title: 'Customer', dataIndex: 'customer_name' },
+                              { title: 'Mobile', dataIndex: 'mobile' },
+                              { title: 'Days Inactive', dataIndex: 'days_inactive', render: v => <Tag color="volcano">{v} days ago</Tag> }
+                            ]}
+                            dataSource={customerData.inactiveCustomers.map((c, i) => ({ ...c, key: i }))}
+                            pagination={false}
+                            size="small"
+                          />
+                        </Card>
+                      </Col>
+                    </Row>
+                  </div>
+                )
+              },
+              {
+                key: 'marketing',
+                label: <span><TagOutlined /> Coupons & Abandoned Carts</span>,
+                children: (
+                  <Row gutter={16}>
+                    <Col span={14}>
+                      <Card title="🛒 Abandoned Carts Analytics" style={{ borderRadius: 12 }}>
+                        <Table 
+                          columns={[
+                            { title: 'Customer', dataIndex: 'customer_name', render: v => <Text strong>{v}</Text> },
+                            { title: 'Mobile', dataIndex: 'mobile' },
+                            { title: 'Items in Cart', dataIndex: 'item_count' },
+                            { title: 'Cart Value', dataIndex: 'estimated_cart_value', render: v => <Text strong style={{ color: '#1890ff' }}>₹{v}</Text> },
+                            { title: 'Created At', dataIndex: 'cart_created_at', render: v => new Date(v).toLocaleDateString() }
+                          ]}
+                          dataSource={cartData.map((c, i) => ({ ...c, key: i }))}
+                          pagination={{ pageSize: 5 }}
+                          size="small"
+                        />
+                      </Card>
+                    </Col>
+                    <Col span={10}>
+                      <Card title="🎟️ Coupon Usage Performance" style={{ borderRadius: 12 }}>
+                        <Table 
+                          columns={[
+                            { title: 'Code', dataIndex: 'code', render: v => <Tag color="blue">{v}</Tag> },
+                            { title: 'Value', dataIndex: 'discount_value', render: (v, r) => r.discount_type === 'percentage' ? `${v}%` : `₹${v}` },
+                            { title: 'Used / Limit', render: (_, r) => `${r.used_count} / ${r.usage_limit}` },
+                            { title: 'Status', dataIndex: 'is_active', render: v => <Tag color={v ? 'green' : 'red'}>{v ? 'Active' : 'Expired'}</Tag> }
+                          ]}
+                          dataSource={couponData.map((c, i) => ({ ...c, key: i }))}
+                          pagination={false}
+                          size="small"
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
                 )
               }
             ]}
