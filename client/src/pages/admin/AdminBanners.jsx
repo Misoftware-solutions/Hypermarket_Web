@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, Card, Switch, Row, Col, Upload, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined, HolderOutlined } from '@ant-design/icons';
 import { getAllBanners, createBanner, updateBanner, deleteBanner, uploadBannerImage } from '../../services/api';
 const {
   Title,
   Text
 } = Typography;
+
 const AdminBanners = () => {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewBanner, setPreviewBanner] = useState(null);
   const [editingBanner, setEditingBanner] = useState(null);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -22,9 +25,51 @@ const AdminBanners = () => {
     setLoading(true);
     try {
       const res = await getAllBanners();
-      setBanners(res.data || []);
+      const sorted = (res.data || []).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      setBanners(sorted);
     } catch {/* API not available */} finally {
       setLoading(false);
+    }
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (e, dropIndex) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    if (draggedIndex === null || draggedIndex === dropIndex) return;
+
+    const reordered = [...banners];
+    const [movedItem] = reordered.splice(draggedIndex, 1);
+    reordered.splice(dropIndex, 0, movedItem);
+
+    // Update sort_order for each banner
+    const updated = reordered.map((b, idx) => ({
+      ...b,
+      sort_order: idx + 1
+    }));
+
+    setBanners(updated);
+    setDraggedIndex(null);
+
+    try {
+      await Promise.all(
+        updated.map(b => updateBanner(b.banner_id, { sort_order: b.sort_order }))
+      );
+      message.success('Banner order updated');
+    } catch {
+      message.error('Failed to save new order');
+      fetchData();
     }
   };
 
@@ -32,7 +77,7 @@ const AdminBanners = () => {
     try {
       const values = await form.validateFields();
       
-      // Normalize image URL (convert local absolute/relative paths to web-friendly public path)
+      // Normalize image URL
       let imageUrl = values.image_url || '';
       imageUrl = imageUrl.replace(/\\/g, '/');
       const srcImagesMatch = imageUrl.match(/(?:client\/src\/images|src\/images)\/(.+)$/i);
@@ -90,65 +135,76 @@ const AdminBanners = () => {
     }
   };
 
-  const columns = [{
-    title: 'Banner',
-    dataIndex: 'title',
-    render: (_, r) => <div className="d-flex align-items-center gap-3">
-          <div style={{
-        width: 80,
-        height: 45,
-        borderRadius: 8,
-        background: r.image_url && !r.image_url.includes('[object') ? `url("${encodeURI(r.image_url)}") center/cover` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-            {!r.image_url || r.image_url.includes('[object') ? (
-              <Text style={{ color: '#fff', fontSize: '0.6rem' }}>Banner</Text>
-            ) : null}
+  const columns = [
+    {
+      title: '',
+      key: 'drag_handle',
+      width: 40,
+      render: () => (
+        <HolderOutlined style={{ cursor: 'grab', color: '#999', fontSize: 16 }} />
+      )
+    },
+    {
+      title: 'Banner',
+      dataIndex: 'title',
+      render: (_, r) => <div className="d-flex align-items-center gap-3">
+            <div style={{
+          width: 80,
+          height: 45,
+          borderRadius: 8,
+          background: r.image_url && !r.image_url.includes('[object') ? `url("${encodeURI(r.image_url)}") center/cover` : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+              {!r.image_url || r.image_url.includes('[object') ? (
+                <Text style={{ color: '#fff', fontSize: '0.6rem' }}>Banner</Text>
+              ) : null}
+            </div>
+            <Text strong>{r.title}</Text>
           </div>
-          <Text strong>{r.title}</Text>
-        </div>
-  }, {
-    title: 'Position',
-    dataIndex: 'position',
-    render: v => <Tag color={v === 'home_top' ? 'blue' : v === 'popup' ? 'purple' : 'cyan'}>{v || 'home_top'}</Tag>
-  }, {
-    title: 'Link',
-    dataIndex: 'link_url',
-    render: v => <Text type="secondary" style={{
-      fontSize: '0.8rem'
-    }}>{v || '—'}</Text>
-  }, {
-    title: 'Sort',
-    dataIndex: 'sort_order'
-  }, {
-    title: 'Active',
-    dataIndex: 'is_active',
-    render: (v, r) => <Switch checked={!!v} size="small" onChange={(checked) => handleToggleActive(r.banner_id, checked)} />
-  }, {
-    title: 'Actions',
-    render: (_, r) => <Space>
-          <Button type="text" icon={<EyeOutlined />} onClick={() => setPreviewBanner(r)} style={{
-        color: '#1890ff'
-      }} />
-          <Button type="text" icon={<EditOutlined />} onClick={() => {
-            setEditingBanner(r);
-            form.setFieldsValue({
-              title: r.title,
-              position: r.position || 'home_top',
-              link_url: r.link_url,
-              image_url: r.image_url,
-              sort_order: r.sort_order,
-              is_active: !!r.is_active
-            });
-            setIsModalOpen(true);
-          }} style={{
-            color: '#faad14'
-          }} />
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(r.banner_id)} />
-        </Space>
-  }];
+    }, {
+      title: 'Position',
+      dataIndex: 'position',
+      render: v => <Tag color={v === 'home_top' ? 'blue' : v === 'popup' ? 'purple' : 'cyan'}>{v || 'home_top'}</Tag>
+    }, {
+      title: 'Link',
+      dataIndex: 'link_url',
+      render: v => <Text type="secondary" style={{
+        fontSize: '0.8rem'
+      }}>{v || '—'}</Text>
+    }, {
+      title: 'Sort Order',
+      dataIndex: 'sort_order',
+      render: v => <Tag color="geekblue">#{v}</Tag>
+    }, {
+      title: 'Active',
+      dataIndex: 'is_active',
+      render: (v, r) => <Switch checked={!!v} size="small" onChange={(checked) => handleToggleActive(r.banner_id, checked)} />
+    }, {
+      title: 'Actions',
+      render: (_, r) => <Space>
+            <Button type="text" icon={<EyeOutlined />} onClick={() => setPreviewBanner(r)} style={{
+          color: '#1890ff'
+        }} />
+            <Button type="text" icon={<EditOutlined />} onClick={() => {
+              setEditingBanner(r);
+              form.setFieldsValue({
+                title: r.title,
+                position: r.position || 'home_top',
+                link_url: r.link_url,
+                image_url: r.image_url,
+                sort_order: r.sort_order,
+                is_active: !!r.is_active
+              });
+              setIsModalOpen(true);
+            }} style={{
+              color: '#faad14'
+            }} />
+            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleDelete(r.banner_id)} />
+          </Space>
+    }
+  ];
 
   return <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -166,12 +222,27 @@ const AdminBanners = () => {
     }} bodyStyle={{
       padding: 0
     }}>
-        <Table columns={columns} dataSource={banners.map(b => ({
-        ...b,
-        key: b.banner_id
-      }))} loading={loading} pagination={{
-        pageSize: 10
-      }} />
+        <Table
+          columns={columns}
+          dataSource={banners.map((b, index) => ({
+            ...b,
+            key: b.banner_id,
+            index
+          }))}
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          onRow={(record, index) => ({
+            draggable: true,
+            onDragStart: (e) => handleDragStart(e, index),
+            onDragOver: (e) => handleDragOver(e, index),
+            onDrop: (e) => handleDrop(e, index),
+            style: {
+              cursor: 'move',
+              backgroundColor: dragOverIndex === index ? '#e6f7ff' : draggedIndex === index ? '#f5f5f5' : 'inherit',
+              transition: 'background-color 0.2s ease'
+            }
+          })}
+        />
       </Card>
 
       <Modal 
