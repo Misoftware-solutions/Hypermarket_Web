@@ -42,7 +42,35 @@ const AdminReports = () => {
   const [customerData, setCustomerData] = useState({ topCustomers: [], inactiveCustomers: [], ratio: {} });
   const [cartData, setCartData] = useState([]);
   const [couponData, setCouponData] = useState([]);
-  const [opData, setOpData] = useState({ deliverySlots: [], inventoryLogs: [] });
+  const [activeTab, setActiveTab] = useState('sales');
+
+  const handleExportTab = () => {
+    switch (activeTab) {
+      case 'sales':
+        exportCSV(prodPerfData.topProducts, `sales_report_${period}.csv`);
+        break;
+      case 'inventory':
+        exportCSV(invData.lowStock, `low_stock_report.csv`);
+        break;
+      case 'tax':
+        exportCSV(taxData, `gst_tax_report.csv`);
+        break;
+      case 'margins':
+        exportCSV(profitData, `profit_margins_report.csv`);
+        break;
+      case 'customers':
+        exportCSV(customerData.topCustomers, `customer_clv_report.csv`);
+        break;
+      case 'marketing':
+        exportCSV(cartData, `abandoned_carts_report.csv`);
+        break;
+      case 'operations':
+        exportCSV(opData.deliverySlots, `delivery_slots_report.csv`);
+        break;
+      default:
+        exportCSV(prodPerfData.topProducts, `report.csv`);
+    }
+  };
 
   useEffect(() => {
     fetchAllReports();
@@ -202,7 +230,7 @@ const AdminReports = () => {
             type="primary" 
             icon={<DownloadOutlined />} 
             style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-            onClick={() => exportCSV(prodPerfData.topProducts, 'sales_performance_report.csv')}
+            onClick={handleExportTab}
           >
             Export CSV
           </Button>
@@ -262,6 +290,8 @@ const AdminReports = () => {
 
           <Tabs 
             type="card"
+            activeKey={activeTab}
+            onChange={setActiveTab}
             items={[
               {
                 key: 'sales',
