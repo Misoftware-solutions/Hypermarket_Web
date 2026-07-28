@@ -314,8 +314,8 @@ const AdminInventory = () => {
                     { title: 'Out of Stock', value: stats.critical, color: '#ff4d4f' }
                   ].map((s, i) => (
                     <Col xs={12} md={6} key={i}>
-                      <Card style={{ borderRadius: 12, borderTop: `3px solid ${s.color}` }} bodyStyle={{ padding: '16px 20px' }}>
-                        <Statistic title={s.title} value={s.value} valueStyle={{ color: s.color, fontSize: '1.5rem' }} />
+                      <Card style={{ borderRadius: 12, borderTop: `3px solid ${s.color}` }} styles={{ body: { padding: '16px 20px' } }}>
+                        <Statistic title={s.title} value={s.value} styles={{ content: { color: s.color, fontSize: '1.5rem' } }} />
                       </Card>
                     </Col>
                   ))}
@@ -344,7 +344,7 @@ const AdminInventory = () => {
                   </Space>
                 </div>
 
-                <Card style={{ borderRadius: 12 }} bodyStyle={{ padding: 0 }}>
+                <Card style={{ borderRadius: 12 }} styles={{ body: { padding: 0 } }}>
                   <Table 
                     columns={columns} 
                     dataSource={items.map(it => ({ ...it, key: it.product_id }))} 
