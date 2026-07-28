@@ -263,85 +263,89 @@ const OrderTracking = () => {
         width={650}
         bodyStyle={{ padding: '20px' }}
       >
-        <div id="receipt-print-area" style={{ background: '#fff', padding: '10px' }}>
+        <div id="receipt-print-area" style={{ background: '#fff', padding: '24px', border: '1px solid #f0f0f0', borderRadius: '8px', color: '#262626', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
           {/* Header */}
-          <div className="receipt-header">
-            <div className="store-name">{storeSettings.store_name}</div>
-            <div className="store-info">
+          <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '16px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '24px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+              {storeSettings.store_name}
+            </div>
+            <div style={{ fontSize: '12px', color: '#595959', lineHeight: 1.4 }}>
               {storeSettings.address}, {storeSettings.city}, {storeSettings.state} - {storeSettings.pincode}<br />
               Tel: {storeSettings.phone} | Email: {storeSettings.email}
             </div>
-            <div className="receipt-badge">TAX INVOICE / DIGITAL RECEIPT</div>
+            <div style={{ display: 'inline-block', background: '#000', color: '#fff', padding: '4px 12px', fontWeight: 700, fontSize: '12px', borderRadius: '4px', marginTop: '8px', textTransform: 'uppercase' }}>
+              TAX INVOICE / DIGITAL RECEIPT
+            </div>
           </div>
 
           {/* Metadata Grid */}
-          <div className="meta-grid">
-            <div className="meta-box">
-              <strong>Order Details</strong>
-              <div>Order No: <span style={{ fontWeight: 700 }}>{order.order_number}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '20px', fontSize: '13px', borderBottom: '1px dashed #ccc', paddingBottom: '16px' }}>
+            <div>
+              <strong style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', color: '#8c8c8c', marginBottom: '4px', letterSpacing: '0.5px' }}>Order Details</strong>
+              <div>Order No: <span style={{ fontWeight: 700, color: '#1890ff' }}>{order.order_number}</span></div>
               <div>Date: {new Date(order.created_at).toLocaleString()}</div>
               <div>Payment: {order.payment_method?.toUpperCase() || 'COD'} ({order.payment_status})</div>
             </div>
-            <div className="meta-box" style={{ textAlign: 'right' }}>
-              <strong>Customer & Shipping</strong>
+            <div style={{ textAlign: 'right' }}>
+              <strong style={{ display: 'block', fontSize: '11px', textTransform: 'uppercase', color: '#8c8c8c', marginBottom: '4px', letterSpacing: '0.5px' }}>Customer & Shipping</strong>
               <div style={{ fontWeight: 600 }}>{order.customer_name}</div>
-              <div>Phone: {order.phone_number}</div>
-              <div style={{ fontSize: '12px', color: '#595959' }}>{order.delivery_address}</div>
+              <div>Phone: {order.phone_number || 'N/A'}</div>
+              <div style={{ fontSize: '12px', color: '#595959', maxWidth: '240px', wordBreak: 'break-word' }}>{order.delivery_address}</div>
             </div>
           </div>
 
           {/* Items Table */}
-          <table>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px', fontSize: '13px' }}>
             <thead>
-              <tr>
-                <th style={{ width: '50%' }}>Item Description</th>
-                <th style={{ textAlign: 'right' }}>Price</th>
-                <th style={{ textAlign: 'center' }}>Qty</th>
-                <th style={{ textAlign: 'right' }}>Total</th>
+              <tr style={{ borderBottom: '2px solid #262626' }}>
+                <th style={{ textAlign: 'left', padding: '8px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px', color: '#595959', width: '50%' }}>Item Description</th>
+                <th style={{ textAlign: 'right', padding: '8px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px', color: '#595959' }}>Price</th>
+                <th style={{ textAlign: 'center', padding: '8px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px', color: '#595959' }}>Qty</th>
+                <th style={{ textAlign: 'right', padding: '8px', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px', color: '#595959' }}>Total</th>
               </tr>
             </thead>
             <tbody>
               {(order.items || []).map((item, index) => (
-                <tr key={index}>
-                  <td>
+                <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <td style={{ padding: '10px 8px' }}>
                     <strong style={{ color: '#262626' }}>{item.product_name}</strong>
                     {item.size && <div style={{ fontSize: '11px', color: '#8c8c8c' }}>{item.size}</div>}
                   </td>
-                  <td style={{ textAlign: 'right' }}>₹{Number(item.unit_price)}</td>
-                  <td style={{ textAlign: 'center', fontWeight: 600 }}>{Number(item.qty)}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 600 }}>₹{Number(item.qty) * Number(item.unit_price)}</td>
+                  <td style={{ textAlign: 'right', padding: '10px 8px' }}>₹{Number(item.unit_price)}</td>
+                  <td style={{ textAlign: 'center', padding: '10px 8px', fontWeight: 600 }}>{Number(item.qty)}</td>
+                  <td style={{ textAlign: 'right', padding: '10px 8px', fontWeight: 600 }}>₹{Number(item.qty) * Number(item.unit_price)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
 
           {/* Summary Calculation */}
-          <div className="summary-table">
-            <div className="summary-row">
+          <div style={{ width: '280px', marginLeft: 'auto', fontSize: '13px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
               <span>Items Subtotal:</span>
               <span>₹{itemsSubtotal}</span>
             </div>
             
             {storeSettings.show_tax_breakup === 'true' && (
-              <div className="summary-row">
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
                 <span>Tax ({storeSettings.default_tax}% GST):</span>
                 <span>₹{calculatedTax}</span>
               </div>
             )}
 
-            <div className="summary-row">
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
               <span>Delivery Charge:</span>
               <span>₹{Math.max(0, Number(order.grand_total) - itemsSubtotal - (storeSettings.show_tax_breakup === 'true' ? calculatedTax : 0))}</span>
             </div>
 
-            <div className="summary-row total-row">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, borderTop: '2px solid #000', borderBottom: '2px double #000', padding: '10px 0', marginTop: '6px' }}>
               <span>GRAND TOTAL:</span>
               <span>₹{Number(order.grand_total)}</span>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="receipt-footer">
+          <div style={{ textAlign: 'center', marginTop: '30px', borderTop: '1px dashed #ccc', paddingTop: '16px', fontSize: '12px', color: '#595959' }}>
             <div>Thank you for shopping with <strong>{storeSettings.store_name}</strong>!</div>
             <div style={{ fontSize: '11px', marginTop: '4px', color: '#8c8c8c' }}>
               This is an official computer-generated receipt. GST invoice terms apply.
