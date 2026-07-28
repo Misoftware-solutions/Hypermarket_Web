@@ -112,5 +112,6 @@ export const getProfitReport = () => API.get('/reports/profit-margins');
 export const getCustomerMetricsReport = () => API.get('/reports/customer-metrics');
 export const getCartAbandonmentReport = () => API.get('/reports/cart-abandonment');
 export const getCouponAnalyticsReport = () => API.get('/reports/coupon-analytics');
+export const getOperationalReport = () => API.get('/reports/operational-logistics');
 
 export default API;

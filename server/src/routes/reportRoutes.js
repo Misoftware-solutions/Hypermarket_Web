@@ -12,5 +12,6 @@ router.get('/profit-margins', reportController.getProfitReport);
 router.get('/customer-metrics', reportController.getCustomerMetrics);
 router.get('/cart-abandonment', reportController.getCartAbandonment);
 router.get('/coupon-analytics', reportController.getCouponAnalytics);
+router.get('/operational-logistics', reportController.getOperationalReports);
 
 module.exports = router;

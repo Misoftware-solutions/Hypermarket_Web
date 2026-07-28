@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Row, Col, Typography, Table, Tag, Tabs, Select, Statistic, Spin, Alert, Progress } from 'antd';
-import { DollarOutlined, ShoppingCartOutlined, LineChartOutlined, PercentageOutlined, FileTextOutlined, WarningOutlined, UserOutlined, TagOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { DollarOutlined, ShoppingCartOutlined, LineChartOutlined, PercentageOutlined, FileTextOutlined, WarningOutlined, UserOutlined, TagOutlined, CarOutlined } from '@ant-design/icons';
 import { 
   getSalesReport, 
   getCategoryBrandReport, 
@@ -10,7 +10,8 @@ import {
   getProfitReport,
   getCustomerMetricsReport,
   getCartAbandonmentReport,
-  getCouponAnalyticsReport
+  getCouponAnalyticsReport,
+  getOperationalReport
 } from '../../services/api';
 
 const { Title, Text } = Typography;
@@ -27,6 +28,7 @@ const AdminReports = () => {
   const [customerData, setCustomerData] = useState({ topCustomers: [], inactiveCustomers: [], ratio: {} });
   const [cartData, setCartData] = useState([]);
   const [couponData, setCouponData] = useState([]);
+  const [opData, setOpData] = useState({ deliverySlots: [], inventoryLogs: [] });
 
   useEffect(() => {
     fetchAllReports();
@@ -35,7 +37,7 @@ const AdminReports = () => {
   const fetchAllReports = async () => {
     setLoading(true);
     try {
-      const [salesRes, catBrandRes, prodPerfRes, invRes, taxRes, profitRes, custRes, cartRes, couponRes] = await Promise.all([
+      const [salesRes, catBrandRes, prodPerfRes, invRes, taxRes, profitRes, custRes, cartRes, couponRes, opRes] = await Promise.all([
         getSalesReport(period),
         getCategoryBrandReport(),
         getProductPerformanceReport(),
@@ -44,7 +46,8 @@ const AdminReports = () => {
         getProfitReport(),
         getCustomerMetricsReport(),
         getCartAbandonmentReport(),
-        getCouponAnalyticsReport()
+        getCouponAnalyticsReport(),
+        getOperationalReport()
       ]);
 
       setSalesData(salesRes.data);
@@ -56,6 +59,7 @@ const AdminReports = () => {
       setCustomerData(custRes.data);
       setCartData(cartRes.data);
       setCouponData(couponRes.data);
+      setOpData(opRes.data);
     } catch (err) {
       console.error('Failed to load ERP reports:', err);
     } finally {
@@ -104,7 +108,7 @@ const AdminReports = () => {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <div>
           <Title level={3} style={{ margin: 0 }}>Business Reports & ERP Analytics</Title>
-          <Text type="secondary">Real-time financial, inventory, sales, customer, and marketing analytics</Text>
+          <Text type="secondary">Real-time financial, inventory, sales, customer, marketing, and logistics analytics</Text>
         </div>
         <Select value={period} onChange={setPeriod} style={{ width: 160 }}>
           <Select.Option value="7days">Last 7 Days</Select.Option>
@@ -393,6 +397,44 @@ const AdminReports = () => {
                           ]}
                           dataSource={couponData.map((c, i) => ({ ...c, key: i }))}
                           pagination={false}
+                          size="small"
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+                )
+              },
+              {
+                key: 'operations',
+                label: <span><CarOutlined /> Operational & Logistics Load</span>,
+                children: (
+                  <Row gutter={16}>
+                    <Col span={10}>
+                      <Card title="🚚 Delivery Slot Load Distribution" style={{ borderRadius: 12 }}>
+                        <Table 
+                          columns={[
+                            { title: 'Delivery Slot', dataIndex: 'slot_name', render: v => <Text strong>{v}</Text> },
+                            { title: 'Total Orders', dataIndex: 'order_count', render: v => <Tag color="blue">{v} orders</Tag> },
+                            { title: 'Slot Value', dataIndex: 'total_value', render: v => `₹${v}` }
+                          ]}
+                          dataSource={opData.deliverySlots.map((s, i) => ({ ...s, key: i }))}
+                          pagination={false}
+                          size="small"
+                        />
+                      </Card>
+                    </Col>
+                    <Col span={14}>
+                      <Card title="📜 Inventory Audit & Stock Movement Log" style={{ borderRadius: 12 }}>
+                        <Table 
+                          columns={[
+                            { title: 'Product', dataIndex: 'product_name', render: v => <Text strong>{v}</Text> },
+                            { title: 'Change Type', dataIndex: 'change_type', render: v => <Tag color={v === 'sale' ? 'orange' : v === 'intake' ? 'green' : 'red'}>{v}</Tag> },
+                            { title: 'Qty', dataIndex: 'qty_change' },
+                            { title: 'Notes', dataIndex: 'notes', render: v => v || '—' },
+                            { title: 'Date', dataIndex: 'created_at', render: v => new Date(v).toLocaleDateString() }
+                          ]}
+                          dataSource={opData.inventoryLogs.map((l, i) => ({ ...l, key: i }))}
+                          pagination={{ pageSize: 5 }}
                           size="small"
                         />
                       </Card>

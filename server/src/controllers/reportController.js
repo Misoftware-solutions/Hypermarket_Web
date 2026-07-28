@@ -346,3 +346,40 @@ exports.getCouponAnalytics = async (req, res) => {
     }
 };
 
+// Get Operational & Logistics Load Reports
+exports.getOperationalReports = async (req, res) => {
+    try {
+        const [deliverySlots] = await db.query(`
+            SELECT 
+                COALESCE(delivery_slot, 'Standard Express') as slot_name,
+                COUNT(*) as order_count,
+                COALESCE(SUM(grand_total), 0) as total_value
+            FROM orders
+            GROUP BY delivery_slot
+            ORDER BY order_count DESC
+        `);
+
+        const [inventoryLogs] = await db.query(`
+            SELECT 
+                il.log_id,
+                p.product_name,
+                il.change_type,
+                il.qty_change,
+                il.notes,
+                il.created_at
+            FROM inventory_logs il
+            JOIN products p ON il.product_id = p.product_id
+            ORDER BY il.created_at DESC
+            LIMIT 20
+        `);
+
+        res.json({
+            deliverySlots,
+            inventoryLogs
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+
