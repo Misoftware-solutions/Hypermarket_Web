@@ -18,7 +18,7 @@ const { Title, Text } = Typography;
 
 const AdminReports = () => {
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('30days');
+  const [period, setPeriod] = useState('all');
   const [salesData, setSalesData] = useState(null);
   const [catBrandData, setCatBrandData] = useState({ byCategory: [], byBrand: [] });
   const [prodPerfData, setProdPerfData] = useState({ topProducts: [], slowMoving: [] });
@@ -111,6 +111,7 @@ const AdminReports = () => {
           <Text type="secondary">Real-time financial, inventory, sales, customer, marketing, and logistics analytics</Text>
         </div>
         <Select value={period} onChange={setPeriod} style={{ width: 160 }}>
+          <Select.Option value="all">All Time</Select.Option>
           <Select.Option value="7days">Last 7 Days</Select.Option>
           <Select.Option value="30days">Last 30 Days</Select.Option>
           <Select.Option value="90days">Last 90 Days</Select.Option>

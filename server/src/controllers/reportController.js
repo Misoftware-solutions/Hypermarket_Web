@@ -3,11 +3,12 @@ const db = require('../config/db');
 // Get Sales Summary (Sales trends, revenue, order count, AOV, payment methods)
 exports.getSalesSummary = async (req, res) => {
     try {
-        const { period = '30days' } = req.query;
-        let dateFilter = 'INTERVAL 30 DAY';
-        if (period === '7days') dateFilter = 'INTERVAL 7 DAY';
-        if (period === '90days') dateFilter = 'INTERVAL 90 DAY';
-        if (period === '1year') dateFilter = 'INTERVAL 1 YEAR';
+        const { period = 'all' } = req.query;
+        let dateWhere = '1=1';
+        if (period === '7days') dateWhere = 'created_at >= NOW() - INTERVAL 7 DAY';
+        if (period === '30days') dateWhere = 'created_at >= NOW() - INTERVAL 30 DAY';
+        if (period === '90days') dateWhere = 'created_at >= NOW() - INTERVAL 90 DAY';
+        if (period === '1year') dateWhere = 'created_at >= NOW() - INTERVAL 1 YEAR';
 
         // Overall stats
         const [overall] = await db.query(`
@@ -19,7 +20,7 @@ exports.getSalesSummary = async (req, res) => {
                 COALESCE(SUM(tax_amount), 0) as total_tax,
                 COALESCE(SUM(discount_amount), 0) as total_discounts
             FROM orders
-            WHERE created_at >= NOW() - ${dateFilter}
+            WHERE ${dateWhere}
         `);
 
         // Sales trend by date
@@ -29,7 +30,7 @@ exports.getSalesSummary = async (req, res) => {
                 COUNT(*) as orders_count,
                 COALESCE(SUM(grand_total), 0) as revenue
             FROM orders
-            WHERE created_at >= NOW() - ${dateFilter}
+            WHERE ${dateWhere}
             GROUP BY DATE(created_at)
             ORDER BY date ASC
         `);
@@ -41,7 +42,7 @@ exports.getSalesSummary = async (req, res) => {
                 COUNT(*) as count,
                 COALESCE(SUM(grand_total), 0) as total_amount
             FROM orders
-            WHERE created_at >= NOW() - ${dateFilter}
+            WHERE ${dateWhere}
             GROUP BY payment_method
         `);
 
