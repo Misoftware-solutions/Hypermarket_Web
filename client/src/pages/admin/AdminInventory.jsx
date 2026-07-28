@@ -90,10 +90,12 @@ const AdminInventory = () => {
 
   const fetchProductsData = async () => {
     try {
-      const res = await getProducts();
-      setProductsList(res.data || []);
+      const res = await getProducts({ limit: 1000 });
+      const prods = Array.isArray(res.data) ? res.data : (res.data?.products || []);
+      setProductsList(prods);
     } catch (e) {
       console.error('Failed to load products list:', e);
+      setProductsList([]);
     }
   };
 
@@ -422,7 +424,7 @@ const AdminInventory = () => {
                           value={r.product_id}
                           onChange={v => updatePoItem(idx, 'product_id', v)}
                           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                          options={productsList.map(p => ({ value: p.product_id, label: `${p.product_name} (Current Stock: ${p.available_qty || 0})` }))}
+                          options={(Array.isArray(productsList) ? productsList : []).map(p => ({ value: p.product_id, label: `${p.product_name} (Current Stock: ${p.stock_qty || p.available_qty || 0})` }))}
                         />
                       )
                     },
