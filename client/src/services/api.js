@@ -28,6 +28,7 @@ export const verifyOtp = data => API.post('/auth/verify-otp', data);
 export const getProducts = params => API.get('/products', {
   params
 });
+export const getInactiveProducts = () => API.get('/products/inactive');
 export const getProductById = id => API.get(`/products/${id}`);
 export const getProductReviews = id => API.get(`/products/${id}/reviews`);
 export const createProductReview = (id, data) => API.post(`/products/${id}/reviews`, data);
@@ -37,6 +38,7 @@ export const createProduct = data => API.post('/products', data);
 export const uploadProductImage = data => API.post('/products/upload', data);
 export const updateProduct = (id, data) => API.put(`/products/${id}`, data);
 export const deleteProduct = id => API.delete(`/products/${id}`);
+export const restoreProduct = id => API.put(`/products/${id}/restore`);
 
 // Categories
 export const getCategories = () => API.get('/categories');

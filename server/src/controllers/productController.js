@@ -183,6 +183,37 @@ exports.deleteProduct = async (req, res) => {
     }
 };
 
+// Get Inactive Products
+exports.getInactiveProducts = async (req, res) => {
+    try {
+        const [rows] = await db.query(`
+            SELECT p.*, c.category_name, b.brand_name, u.unit_name,
+                   COALESCE(i.available_qty, 0) as stock_qty,
+                   (SELECT image_url FROM product_images pi WHERE pi.product_id = p.product_id AND pi.is_primary = 1 LIMIT 1) as primary_image
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            LEFT JOIN brands b ON p.brand_id = b.brand_id
+            LEFT JOIN units u ON p.unit_id = u.unit_id
+            LEFT JOIN inventory i ON p.product_id = i.product_id
+            WHERE p.is_active = 0
+            ORDER BY p.product_id DESC
+        `);
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Restore Inactive Product
+exports.restoreProduct = async (req, res) => {
+    try {
+        await db.query('UPDATE products SET is_active = 1 WHERE product_id = ?', [req.params.id]);
+        res.json({ message: 'Product restored successfully' });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 // Upload Product Image (writes image file to server public directory)
 exports.uploadProductImage = async (req, res) => {
     try {

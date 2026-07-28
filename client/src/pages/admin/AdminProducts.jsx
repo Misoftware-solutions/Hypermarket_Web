@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, Card, Switch, Upload, Row, Col, Statistic, Badge, message, Alert, AutoComplete } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ExportOutlined, InboxOutlined } from '@ant-design/icons';
-import { getProducts, getCategories, getBrands, createProduct, deleteProduct, updateProduct, uploadProductImage } from '../../services/api';
-const {
-  Title,
-  Text
-} = Typography;
-const {
-  Dragger
-} = Upload;
+import { Table, Button, Modal, Form, Input, InputNumber, Select, Tag, Space, Typography, Card, Switch, Upload, Row, Col, Statistic, Badge, message, Alert, AutoComplete, Drawer, Tooltip } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, ExportOutlined, InboxOutlined, UndoOutlined, RestOutlined } from '@ant-design/icons';
+import { getProducts, getCategories, getBrands, createProduct, deleteProduct, updateProduct, uploadProductImage, getInactiveProducts, restoreProduct } from '../../services/api';
+
+const { Title, Text } = Typography;
+const { Dragger } = Upload;
+
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -21,6 +18,64 @@ const AdminProducts = () => {
   const [productSuggestions, setProductSuggestions] = useState([]);
   const [fileList, setFileList] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Inactive / Deleted Products Drawer State
+  const [inactiveDrawer, setInactiveDrawer] = useState(false);
+  const [inactiveProducts, setInactiveProducts] = useState([]);
+  const [loadingInactive, setLoadingInactive] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [pRes, cRes, bRes] = await Promise.all([
+        getProducts({ limit: 1000 }), 
+        getCategories(), 
+        getBrands()
+      ]);
+
+      const rawProducts = pRes.data?.products || (Array.isArray(pRes.data) ? pRes.data : []);
+      setProducts(rawProducts);
+      setCategories(cRes.data || []);
+      setBrands(bRes.data || []);
+    } catch (err) {
+      console.error(err);
+      message.error('Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchInactive = async () => {
+    setLoadingInactive(true);
+    try {
+      const res = await getInactiveProducts();
+      setInactiveProducts(res.data || []);
+    } catch (err) {
+      message.error('Failed to load inactive products');
+    } finally {
+      setLoadingInactive(false);
+    }
+  };
+
+  const handleOpenInactiveDrawer = () => {
+    setInactiveDrawer(true);
+    fetchInactive();
+  };
+
+  const handleRestoreProduct = async (id, name) => {
+    try {
+      await restoreProduct(id);
+      message.success(`Product "${name}" restored back to inventory!`);
+      fetchInactive();
+      fetchData();
+    } catch (err) {
+      message.error('Failed to restore product');
+    }
+  };
 
   const handleCancel = () => {
     setIsModalOpen(false);
@@ -424,15 +479,29 @@ const AdminProducts = () => {
           </Col>)}
       </Row>
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <Title level={3} style={{
-        margin: 0
-      }}>Products</Title>
+        <Title level={3} style={{ margin: 0 }}>Products</Title>
         <Space>
-          <Input prefix={<SearchOutlined />} placeholder="Search..." style={{
-          width: 250
-        }} value={search} onChange={e => setSearch(e.target.value)} />
-          <Button icon={<ExportOutlined />}>Export</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingProduct(null); setProductSuggestions([]); setFileList([]); form.resetFields(); setIsModalOpen(true); }}>Add Product</Button>
+          <Input 
+            prefix={<SearchOutlined />} 
+            placeholder="Search products..." 
+            style={{ width: 250 }} 
+            value={search} 
+            onChange={e => setSearch(e.target.value)} 
+          />
+          <Button 
+            icon={<RestOutlined />} 
+            onClick={handleOpenInactiveDrawer}
+            style={{ borderColor: '#faad14', color: '#faad14' }}
+          >
+            Inactive / Deleted Products
+          </Button>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={() => { setEditingProduct(null); setProductSuggestions([]); setFileList([]); form.resetFields(); setIsModalOpen(true); }}
+          >
+            Add Product
+          </Button>
         </Space>
       </div>
       <Card style={{
@@ -633,6 +702,71 @@ const AdminProducts = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* Inactive / Deleted Products Drawer */}
+      <Drawer
+        title={<span><RestOutlined style={{ color: '#faad14', marginRight: 8 }} /> Inactive & Deleted Products Archive</span>}
+        size="large"
+        open={inactiveDrawer}
+        onClose={() => setInactiveDrawer(false)}
+      >
+        <Alert 
+          message="Inactive Product Archive"
+          description="Deleted products are preserved here safely. Restoring a product will make it active and immediately visible to mobile app and web store customers."
+          type="info"
+          showIcon
+          className="mb-3"
+        />
+        <Table
+          loading={loadingInactive}
+          dataSource={inactiveProducts.map(p => ({ ...p, key: p.product_id }))}
+          columns={[
+            {
+              title: 'Product',
+              dataIndex: 'product_name',
+              render: (name, r) => (
+                <div className="d-flex align-items-center gap-2">
+                  {r.primary_image ? (
+                    <img src={r.primary_image} alt={name} style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4 }} />
+                  ) : (
+                    <div>📦</div>
+                  )}
+                  <div>
+                    <Text strong style={{ color: '#8c8c8c' }}>{name}</Text>
+                    <br />
+                    <Tag>{r.category_name || 'N/A'}</Tag>
+                  </div>
+                </div>
+              )
+            },
+            {
+              title: 'Selling Price',
+              dataIndex: 'selling_price',
+              render: v => `₹${Math.round(Number(v))}`
+            },
+            {
+              title: 'Status',
+              key: 'status',
+              render: () => <Tag color="volcano">Inactive</Tag>
+            },
+            {
+              title: 'Action',
+              key: 'action',
+              render: (_, r) => (
+                <Button
+                  type="primary"
+                  icon={<UndoOutlined />}
+                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                  onClick={() => handleRestoreProduct(r.product_id, r.product_name)}
+                >
+                  Restore Back
+                </Button>
+              )
+            }
+          ]}
+          pagination={{ pageSize: 8 }}
+        />
+      </Drawer>
     </div>;
 };
 export default AdminProducts;
