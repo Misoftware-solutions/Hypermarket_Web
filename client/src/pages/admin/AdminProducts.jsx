@@ -489,7 +489,7 @@ const AdminProducts = () => {
                 tooltip="MRP is the rate which is present in the product (maximum retail price)"
                 rules={[{ required: true, message: 'Please enter MRP' }]}
               >
-                <InputNumber className="w-100" min={0} precision={0} step={1} />
+                <InputNumber className="w-100" min={0} precision={0} step={1} onChange={handleMrpChange} />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -499,7 +499,7 @@ const AdminProducts = () => {
                 tooltip="The standard rate at which this product is sold to customers"
                 rules={[{ required: true, message: 'Please enter selling price' }]}
               >
-                <InputNumber className="w-100" min={0} precision={0} step={1} />
+                <InputNumber className="w-100" min={0} precision={0} step={1} onChange={handleSellingPriceChange} />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -508,7 +508,7 @@ const AdminProducts = () => {
                 label="Offer %"
                 tooltip="Discount percentage (0 to 100%) to calculate the offer price from MRP"
               >
-                <InputNumber className="w-100" min={0} max={100} precision={0} step={1} formatter={value => `${value}%`} parser={value => value.replace('%', '')} />
+                <InputNumber className="w-100" min={0} max={100} precision={0} step={1} formatter={value => `${value}%`} parser={value => value.replace('%', '')} onChange={handleOfferPctChange} />
               </Form.Item>
             </Col>
           </Row>
