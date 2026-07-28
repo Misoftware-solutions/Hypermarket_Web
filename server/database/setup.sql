@@ -288,3 +288,55 @@ INSERT INTO order_items (order_id, product_id, qty, unit_price, total_amount) VA
 (1, 1, 2, 120.00, 240.00), (1, 2, 1, 56.00, 56.00), (1, 3, 3, 40.00, 120.00),
 (2, 4, 2, 380.00, 760.00), (2, 5, 2, 110.00, 220.00), (2, 6, 2, 96.00, 192.00),
 (3, 10, 3, 65.00, 195.00), (3, 12, 1, 410.00, 410.00), (3, 7, 5, 30.00, 150.00);
+
+-- SUPPLIERS
+CREATE TABLE IF NOT EXISTS suppliers (
+    supplier_id INT AUTO_INCREMENT PRIMARY KEY,
+    supplier_name VARCHAR(150) NOT NULL UNIQUE,
+    contact_person VARCHAR(100) NULL,
+    mobile VARCHAR(20) NULL,
+    email VARCHAR(100) NULL,
+    address TEXT NULL,
+    gst_number VARCHAR(20) NULL,
+    is_active BIT DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- PURCHASE ORDERS (Header / Invoice Table)
+CREATE TABLE IF NOT EXISTS purchase_orders (
+    purchase_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    purchase_number VARCHAR(50) UNIQUE NOT NULL,
+    supplier_id INT NOT NULL,
+    invoice_number VARCHAR(100) NULL,
+    purchase_date DATE NOT NULL,
+    payment_status VARCHAR(30) DEFAULT 'Unpaid',
+    payment_method VARCHAR(50) DEFAULT 'Bank',
+    subtotal DECIMAL(10,2) DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) DEFAULT 0,
+    notes TEXT NULL,
+    created_by BIGINT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
+) ENGINE=InnoDB;
+
+-- PURCHASE ITEMS (Line Items Table)
+CREATE TABLE IF NOT EXISTS purchase_items (
+    purchase_item_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    purchase_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    qty DECIMAL(10,2) NOT NULL,
+    cost_price DECIMAL(10,2) NOT NULL,
+    tax_percent DECIMAL(5,2) DEFAULT 0,
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    total_amount DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (purchase_id) REFERENCES purchase_orders(purchase_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+) ENGINE=InnoDB;
+
+INSERT INTO suppliers (supplier_name, contact_person, mobile, email, address, gst_number) VALUES
+('Metro Cash & Carry India', 'Ramesh Kumar', '9812345670', 'sales@metrocash.in', 'Koramangala Industrial Layout, Bangalore', '29AAAAA0000A1Z5'),
+('Reliable Consumer Goods Ltd', 'Suresh Patel', '9812345671', 'info@reliablecg.com', 'GST Road, Guindy, Chennai', '33BBBBA1111B2Z6');
+
