@@ -342,6 +342,10 @@ const AdminProducts = () => {
               } else {
                 setFileList([]);
               }
+            } catch (err) {
+              if (r.primary_image) {
+                setFileList([{ uid: '-1', name: 'primary_image.png', status: 'done', url: r.primary_image }]);
+              }
             }
           }} style={{
         color: '#1890ff'
