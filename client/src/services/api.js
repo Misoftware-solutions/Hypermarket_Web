@@ -102,4 +102,12 @@ export const updateCustomerAddress = (id, addressId, data) => API.put(`/customer
 export const getSettings = () => API.get('/settings');
 export const updateSettings = data => API.put('/settings', data);
 
+// Reports
+export const getSalesReport = period => API.get('/reports/sales-summary', { params: { period } });
+export const getCategoryBrandReport = () => API.get('/reports/category-brand');
+export const getProductPerformanceReport = () => API.get('/reports/product-performance');
+export const getInventoryReportData = () => API.get('/reports/inventory-health');
+export const getTaxReport = () => API.get('/reports/tax-summary');
+export const getProfitReport = () => API.get('/reports/profit-margins');
+
 export default API;

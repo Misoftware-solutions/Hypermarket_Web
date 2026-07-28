@@ -82,6 +82,7 @@ const AdminProducts = () => {
         product_name: selectedProduct.product_name,
         category_id: selectedProduct.category_id,
         brand_id: selectedProduct.brand_id,
+        cost_price: selectedProduct.cost_price || 0,
         mrp: selectedProduct.mrp,
         selling_price: selectedProduct.selling_price,
         offer_percentage: selectedProduct.mrp > 0 && selectedProduct.offer_price ? Math.round(((selectedProduct.mrp - selectedProduct.offer_price) / selectedProduct.mrp) * 100) : 0,
@@ -519,7 +520,16 @@ const AdminProducts = () => {
             </Col>
           </Row>
           <Row gutter={16}>
-            <Col span={8}>
+            <Col span={6}>
+              <Form.Item
+                name="cost_price"
+                label="Cost Price (₹)"
+                tooltip="Purchase/Cost rate from supplier (used to calculate profit margin)"
+              >
+                <InputNumber className="w-100" min={0} precision={0} step={1} placeholder="0" />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
               <Form.Item
                 name="mrp"
                 label="MRP (₹)"
@@ -529,7 +539,7 @@ const AdminProducts = () => {
                 <InputNumber className="w-100" min={0} precision={0} step={1} onChange={handleMrpChange} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
                 name="selling_price"
                 label="Selling Price (₹)"
@@ -539,7 +549,7 @@ const AdminProducts = () => {
                 <InputNumber className="w-100" min={0} precision={0} step={1} onChange={handleSellingPriceChange} />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
                 name="offer_percentage"
                 label="Offer %"

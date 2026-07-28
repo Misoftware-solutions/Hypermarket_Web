@@ -1,0 +1,238 @@
+const db = require('../config/db');
+
+// Get Sales Summary (Sales trends, revenue, order count, AOV, payment methods)
+exports.getSalesSummary = async (req, res) => {
+    try {
+        const { period = '30days' } = req.query;
+        let dateFilter = 'INTERVAL 30 DAY';
+        if (period === '7days') dateFilter = 'INTERVAL 7 DAY';
+        if (period === '90days') dateFilter = 'INTERVAL 90 DAY';
+        if (period === '1year') dateFilter = 'INTERVAL 1 YEAR';
+
+        // Overall stats
+        const [overall] = await db.query(`
+            SELECT 
+                COUNT(*) as total_orders,
+                COALESCE(SUM(grand_total), 0) as total_revenue,
+                COALESCE(AVG(grand_total), 0) as average_order_value,
+                COALESCE(SUM(subtotal), 0) as total_subtotal,
+                COALESCE(SUM(tax_amount), 0) as total_tax,
+                COALESCE(SUM(discount_amount), 0) as total_discounts
+            FROM orders
+            WHERE created_at >= NOW() - ${dateFilter}
+        `);
+
+        // Sales trend by date
+        const [salesTrend] = await db.query(`
+            SELECT 
+                DATE(created_at) as date,
+                COUNT(*) as orders_count,
+                COALESCE(SUM(grand_total), 0) as revenue
+            FROM orders
+            WHERE created_at >= NOW() - ${dateFilter}
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        `);
+
+        // Payment method breakdown
+        const [paymentBreakdown] = await db.query(`
+            SELECT 
+                COALESCE(payment_method, 'COD') as payment_method,
+                COUNT(*) as count,
+                COALESCE(SUM(grand_total), 0) as total_amount
+            FROM orders
+            WHERE created_at >= NOW() - ${dateFilter}
+            GROUP BY payment_method
+        `);
+
+        // Order status breakdown
+        const [statusBreakdown] = await db.query(`
+            SELECT 
+                order_status,
+                COUNT(*) as count
+            FROM orders
+            GROUP BY order_status
+        `);
+
+        res.json({
+            summary: overall[0],
+            salesTrend,
+            paymentBreakdown,
+            statusBreakdown
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Get Sales by Category & Brand
+exports.getCategoryBrandSales = async (req, res) => {
+    try {
+        const [byCategory] = await db.query(`
+            SELECT 
+                c.category_id,
+                c.category_name,
+                COUNT(DISTINCT oi.order_id) as total_orders,
+                COALESCE(SUM(oi.qty), 0) as items_sold,
+                COALESCE(SUM(oi.total_amount), 0) as total_revenue
+            FROM categories c
+            LEFT JOIN products p ON c.category_id = p.category_id
+            LEFT JOIN order_items oi ON p.product_id = oi.product_id
+            GROUP BY c.category_id, c.category_name
+            ORDER BY total_revenue DESC
+        `);
+
+        const [byBrand] = await db.query(`
+            SELECT 
+                b.brand_id,
+                b.brand_name,
+                COUNT(DISTINCT oi.order_id) as total_orders,
+                COALESCE(SUM(oi.qty), 0) as items_sold,
+                COALESCE(SUM(oi.total_amount), 0) as total_revenue
+            FROM brands b
+            LEFT JOIN products p ON b.brand_id = p.brand_id
+            LEFT JOIN order_items oi ON p.product_id = oi.product_id
+            GROUP BY b.brand_id, b.brand_name
+            ORDER BY total_revenue DESC
+        `);
+
+        res.json({ byCategory, byBrand });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Get Top Selling Products vs Slow Moving / Dead Stock
+exports.getProductPerformance = async (req, res) => {
+    try {
+        const [topProducts] = await db.query(`
+            SELECT 
+                p.product_id,
+                p.product_name,
+                p.mrp,
+                p.selling_price,
+                c.category_name,
+                COALESCE(SUM(oi.qty), 0) as total_qty_sold,
+                COALESCE(SUM(oi.total_amount), 0) as total_revenue
+            FROM products p
+            JOIN order_items oi ON p.product_id = oi.product_id
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            GROUP BY p.product_id
+            ORDER BY total_qty_sold DESC
+            LIMIT 10
+        `);
+
+        const [slowMoving] = await db.query(`
+            SELECT 
+                p.product_id,
+                p.product_name,
+                p.mrp,
+                p.selling_price,
+                c.category_name,
+                COALESCE(i.available_qty, 0) as stock_qty,
+                COALESCE(SUM(oi.qty), 0) as total_qty_sold
+            FROM products p
+            LEFT JOIN order_items oi ON p.product_id = oi.product_id
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            LEFT JOIN inventory i ON p.product_id = i.product_id
+            GROUP BY p.product_id
+            ORDER BY total_qty_sold ASC, stock_qty DESC
+            LIMIT 10
+        `);
+
+        res.json({ topProducts, slowMoving });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Get Inventory Health & Stock Valuation Report
+exports.getInventoryReport = async (req, res) => {
+    try {
+        const [lowStock] = await db.query(`
+            SELECT 
+                p.product_id,
+                p.product_name,
+                c.category_name,
+                i.available_qty,
+                i.reserved_qty,
+                i.low_stock_threshold
+            FROM inventory i
+            JOIN products p ON i.product_id = p.product_id
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            WHERE i.available_qty <= i.low_stock_threshold
+            ORDER BY i.available_qty ASC
+        `);
+
+        const [valuation] = await db.query(`
+            SELECT 
+                COUNT(p.product_id) as total_products,
+                COALESCE(SUM(i.available_qty), 0) as total_stock_units,
+                COALESCE(SUM(i.available_qty * p.selling_price), 0) as total_selling_value,
+                COALESCE(SUM(i.available_qty * COALESCE(p.cost_price, p.selling_price * 0.8)), 0) as total_cost_valuation
+            FROM products p
+            LEFT JOIN inventory i ON p.product_id = i.product_id
+        `);
+
+        res.json({
+            lowStock,
+            valuation: valuation[0]
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Get GST / Tax Compliance Report
+exports.getTaxReport = async (req, res) => {
+    try {
+        const [taxByHsn] = await db.query(`
+            SELECT 
+                COALESCE(p.hsn_code, 'N/A') as hsn_code,
+                p.tax_percent,
+                COALESCE(SUM(oi.qty), 0) as total_items_sold,
+                COALESCE(SUM(oi.total_amount - oi.tax_amount), 0) as taxable_amount,
+                COALESCE(SUM(oi.tax_amount), 0) as total_tax_collected,
+                COALESCE(SUM(oi.total_amount), 0) as gross_sales
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.product_id
+            GROUP BY p.hsn_code, p.tax_percent
+            ORDER BY total_tax_collected DESC
+        `);
+
+        res.json(taxByHsn);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Get Profit & Margin Report
+exports.getProfitReport = async (req, res) => {
+    try {
+        const [margins] = await db.query(`
+            SELECT 
+                p.product_id,
+                p.product_name,
+                c.category_name,
+                p.mrp,
+                p.selling_price,
+                COALESCE(p.cost_price, 0) as cost_price,
+                (p.selling_price - COALESCE(p.cost_price, 0)) as profit_per_unit,
+                CASE 
+                    WHEN p.selling_price > 0 THEN ROUND(((p.selling_price - COALESCE(p.cost_price, 0)) / p.selling_price) * 100, 2)
+                    ELSE 0
+                END as margin_percentage,
+                COALESCE(SUM(oi.qty), 0) as units_sold,
+                COALESCE(SUM(oi.qty * (p.selling_price - COALESCE(p.cost_price, 0))), 0) as total_profit_generated
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.category_id
+            LEFT JOIN order_items oi ON p.product_id = oi.product_id
+            GROUP BY p.product_id
+            ORDER BY total_profit_generated DESC
+        `);
+
+        res.json(margins);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

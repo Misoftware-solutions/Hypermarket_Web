@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS products (
     category_id INT,
     brand_id INT,
     unit_id INT,
+    cost_price DECIMAL(10,2) DEFAULT 0,
     mrp DECIMAL(10,2) DEFAULT 0,
     selling_price DECIMAL(10,2) DEFAULT 0,
     offer_price DECIMAL(10,2) NULL,
@@ -116,6 +117,16 @@ CREATE TABLE IF NOT EXISTS inventory (
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS inventory_logs (
+    log_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT,
+    change_type VARCHAR(30), -- 'intake', 'sale', 'adjustment', 'wastage'
+    qty_change DECIMAL(10,2),
+    notes VARCHAR(255),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+) ENGINE=InnoDB;
+
 -- ORDERS
 CREATE TABLE IF NOT EXISTS orders (
     order_id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -132,6 +143,8 @@ CREATE TABLE IF NOT EXISTS orders (
     grand_total DECIMAL(10,2) DEFAULT 0,
     delivery_slot VARCHAR(100),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    delivered_at DATETIME NULL,
+    cancelled_at DATETIME NULL,
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 ) ENGINE=InnoDB;
 
@@ -190,6 +203,14 @@ CREATE TABLE IF NOT EXISTS banners (
     sort_order INT DEFAULT 0,
     is_active BIT DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS banner_clicks (
+    click_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    banner_id INT,
+    customer_id BIGINT NULL,
+    clicked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (banner_id) REFERENCES banners(banner_id)
 ) ENGINE=InnoDB;
 
 -- INDEXES

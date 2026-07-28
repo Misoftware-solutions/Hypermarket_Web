@@ -1,219 +1,302 @@
-import { Card, Row, Col, Typography, Statistic, DatePicker, Select, Button, Table, Tag, Space } from 'antd';
-import { DollarOutlined, ShoppingCartOutlined, UserOutlined, ArrowUpOutlined, ArrowDownOutlined, DownloadOutlined } from '@ant-design/icons';
-const {
-  Title,
-  Text
-} = Typography;
-const {
-  RangePicker
-} = DatePicker;
+import { useState, useEffect } from 'react';
+import { Card, Row, Col, Typography, Table, Tag, Tabs, Select, Statistic, Spin, Alert, Progress } from 'antd';
+import { DollarOutlined, ShoppingCartOutlined, LineChartOutlined, PercentageOutlined, FileTextOutlined, WarningOutlined } from '@ant-design/icons';
+import { 
+  getSalesReport, 
+  getCategoryBrandReport, 
+  getProductPerformanceReport, 
+  getInventoryReportData, 
+  getTaxReport, 
+  getProfitReport 
+} from '../../services/api';
+
+const { Title, Text } = Typography;
+
 const AdminReports = () => {
-  const salesByCategory = [{
-    key: 1,
-    category: '🥬 Fruits & Vegetables',
-    orders: 320,
-    revenue: 48500,
-    growth: 12.5
-  }, {
-    key: 2,
-    category: '🥛 Dairy & Eggs',
-    orders: 280,
-    revenue: 35600,
-    growth: 8.3
-  }, {
-    key: 3,
-    category: '🛒 Groceries',
-    orders: 450,
-    revenue: 89200,
-    growth: 15.1
-  }, {
-    key: 4,
-    category: '🍞 Bakery',
-    orders: 180,
-    revenue: 12800,
-    growth: -3.2
-  }, {
-    key: 5,
-    category: '🧃 Beverages',
-    orders: 210,
-    revenue: 28400,
-    growth: 5.7
-  }, {
-    key: 6,
-    category: '🍿 Snacks',
-    orders: 190,
-    revenue: 18900,
-    growth: 9.4
-  }];
-  const topProducts = [{
-    key: 1,
-    product: 'Aashirvaad Atta 10kg',
-    sold: 85,
-    revenue: 34850
-  }, {
-    key: 2,
-    product: 'India Gate Basmati 5kg',
-    sold: 72,
-    revenue: 27360
-  }, {
-    key: 3,
-    product: 'Amul Taza Milk 1L',
-    sold: 310,
-    revenue: 17360
-  }, {
-    key: 4,
-    product: 'Nestle Maggi 8-Pack',
-    sold: 145,
-    revenue: 13920
-  }, {
-    key: 5,
-    product: 'Fresh Red Apples',
-    sold: 95,
-    revenue: 11400
-  }];
-  return <div>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <Title level={3} style={{
-        margin: 0
-      }}>Reports & Analytics</Title>
-        <Space>
-          <RangePicker />
-          <Select defaultValue="monthly" style={{
-          width: 130
-        }} options={[{
-          value: 'daily',
-          label: 'Daily'
-        }, {
-          value: 'weekly',
-          label: 'Weekly'
-        }, {
-          value: 'monthly',
-          label: 'Monthly'
-        }, {
-          value: 'yearly',
-          label: 'Yearly'
-        }]} />
-          <Button type="primary" icon={<DownloadOutlined />}>Download Report</Button>
-        </Space>
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('30days');
+  const [salesData, setSalesData] = useState(null);
+  const [catBrandData, setCatBrandData] = useState({ byCategory: [], byBrand: [] });
+  const [prodPerfData, setProdPerfData] = useState({ topProducts: [], slowMoving: [] });
+  const [invData, setInvData] = useState({ lowStock: [], valuation: {} });
+  const [taxData, setTaxData] = useState([]);
+  const [profitData, setProfitData] = useState([]);
+
+  useEffect(() => {
+    fetchAllReports();
+  }, [period]);
+
+  const fetchAllReports = async () => {
+    setLoading(true);
+    try {
+      const [salesRes, catBrandRes, prodPerfRes, invRes, taxRes, profitRes] = await Promise.all([
+        getSalesReport(period),
+        getCategoryBrandReport(),
+        getProductPerformanceReport(),
+        getInventoryReportData(),
+        getTaxReport(),
+        getProfitReport()
+      ]);
+
+      setSalesData(salesRes.data);
+      setCatBrandData(catBrandRes.data);
+      setProdPerfData(prodPerfRes.data);
+      setInvData(invRes.data);
+      setTaxData(taxRes.data);
+      setProfitData(profitRes.data);
+    } catch (err) {
+      console.error('Failed to load ERP reports:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const salesSummary = salesData?.summary || {};
+
+  const topProductColumns = [
+    { title: 'Product', dataIndex: 'product_name', key: 'product_name', render: v => <Text strong>{v}</Text> },
+    { title: 'Category', dataIndex: 'category_name', key: 'category_name', render: v => <Tag color="blue">{v || 'N/A'}</Tag> },
+    { title: 'Selling Price', dataIndex: 'selling_price', key: 'selling_price', render: v => `₹${v}` },
+    { title: 'Qty Sold', dataIndex: 'total_qty_sold', key: 'total_qty_sold', render: v => <Text strong style={{ color: '#52c41a' }}>{v}</Text> },
+    { title: 'Total Revenue', dataIndex: 'total_revenue', key: 'total_revenue', render: v => <Text strong>₹{v}</Text> }
+  ];
+
+  const slowMovingColumns = [
+    { title: 'Product', dataIndex: 'product_name', key: 'product_name' },
+    { title: 'Category', dataIndex: 'category_name', key: 'category_name', render: v => <Tag>{v || 'N/A'}</Tag> },
+    { title: 'In Stock', dataIndex: 'stock_qty', key: 'stock_qty', render: v => <Tag color={v === 0 ? 'red' : 'orange'}>{v} units</Tag> },
+    { title: 'Qty Sold', dataIndex: 'total_qty_sold', key: 'total_qty_sold', render: v => `${v} sold` }
+  ];
+
+  const taxColumns = [
+    { title: 'HSN Code', dataIndex: 'hsn_code', key: 'hsn_code', render: v => <Text strong>{v}</Text> },
+    { title: 'GST Rate', dataIndex: 'tax_percent', key: 'tax_percent', render: v => <Tag color="purple">{v}%</Tag> },
+    { title: 'Items Sold', dataIndex: 'total_items_sold', key: 'total_items_sold' },
+    { title: 'Taxable Amount', dataIndex: 'taxable_amount', key: 'taxable_amount', render: v => `₹${Number(v).toFixed(2)}` },
+    { title: 'GST Collected', dataIndex: 'total_tax_collected', key: 'total_tax_collected', render: v => <Text strong style={{ color: '#722ed1' }}>₹{Number(v).toFixed(2)}</Text> },
+    { title: 'Gross Sales', dataIndex: 'gross_sales', key: 'gross_sales', render: v => `₹${Number(v).toFixed(2)}` }
+  ];
+
+  const profitColumns = [
+    { title: 'Product', dataIndex: 'product_name', key: 'product_name', render: v => <Text strong>{v}</Text> },
+    { title: 'MRP', dataIndex: 'mrp', key: 'mrp', render: v => `₹${v}` },
+    { title: 'Selling Price', dataIndex: 'selling_price', key: 'selling_price', render: v => `₹${v}` },
+    { title: 'Cost Price', dataIndex: 'cost_price', key: 'cost_price', render: v => `₹${v || 0}` },
+    { title: 'Profit / Unit', dataIndex: 'profit_per_unit', key: 'profit_per_unit', render: v => <Text style={{ color: Number(v) >= 0 ? '#52c41a' : '#ff4d4f' }}>₹{v}</Text> },
+    { title: 'Margin %', dataIndex: 'margin_percentage', key: 'margin_percentage', render: v => <Progress percent={Math.max(0, Math.min(100, Number(v)))} size="small" status={Number(v) > 20 ? 'active' : 'normal'} /> },
+    { title: 'Total Profit', dataIndex: 'total_profit_generated', key: 'total_profit_generated', render: v => <Text strong style={{ color: '#52c41a' }}>₹{v}</Text> }
+  ];
+
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Business Reports & ERP Analytics</Title>
+          <Text type="secondary">Real-time financial, inventory, sales, and GST compliance reports</Text>
+        </div>
+        <Select value={period} onChange={setPeriod} style={{ width: 160 }}>
+          <Select.Option value="7days">Last 7 Days</Select.Option>
+          <Select.Option value="30days">Last 30 Days</Select.Option>
+          <Select.Option value="90days">Last 90 Days</Select.Option>
+          <Select.Option value="1year">Last 1 Year</Select.Option>
+        </Select>
       </div>
 
-      {/* Summary Cards */}
-      <Row gutter={16} className="mb-4">
-        {[{
-        title: 'Total Revenue',
-        value: 245600,
-        prefix: '₹',
-        icon: <DollarOutlined />,
-        color: '#1890ff',
-        change: '+12.5%',
-        up: true
-      }, {
-        title: 'Total Orders',
-        value: 1250,
-        icon: <ShoppingCartOutlined />,
-        color: '#52c41a',
-        change: '+8.2%',
-        up: true
-      }, {
-        title: 'New Customers',
-        value: 180,
-        icon: <UserOutlined />,
-        color: '#722ed1',
-        change: '+15.3%',
-        up: true
-      }, {
-        title: 'Avg Order Value',
-        value: 392,
-        prefix: '₹',
-        icon: <DollarOutlined />,
-        color: '#fa8c16',
-        change: '-2.1%',
-        up: false
-      }].map((s, i) => <Col xs={12} md={6} key={i}>
-            <Card style={{
-          borderRadius: 12,
-          borderTop: `3px solid ${s.color}`
-        }} bodyStyle={{
-          padding: '16px 20px'
-        }}>
-              <Statistic title={s.title} value={s.value} prefix={s.prefix} valueStyle={{
-            color: s.color,
-            fontSize: '1.4rem'
-          }} />
-              <Tag color={s.up ? 'green' : 'red'} className="mt-1">{s.up ? <ArrowUpOutlined /> : <ArrowDownOutlined />} {s.change}</Tag>
-            </Card>
-          </Col>)}
-      </Row>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}><Spin size="large" /></div>
+      ) : (
+        <>
+          {/* Top KPI Cards */}
+          <Row gutter={16} className="mb-4">
+            <Col xs={12} md={6}>
+              <Card style={{ borderRadius: 12, borderTop: '4px solid #1890ff' }}>
+                <Statistic 
+                  title="Total Revenue" 
+                  value={salesSummary.total_revenue || 0} 
+                  prefix={<DollarOutlined />} 
+                  precision={2}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} md={6}>
+              <Card style={{ borderRadius: 12, borderTop: '4px solid #52c41a' }}>
+                <Statistic 
+                  title="Total Orders" 
+                  value={salesSummary.total_orders || 0} 
+                  prefix={<ShoppingCartOutlined />}
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} md={6}>
+              <Card style={{ borderRadius: 12, borderTop: '4px solid #722ed1' }}>
+                <Statistic 
+                  title="Avg Order Value (AOV)" 
+                  value={salesSummary.average_order_value || 0} 
+                  prefix="₹" 
+                  precision={2}
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} md={6}>
+              <Card style={{ borderRadius: 12, borderTop: '4px solid #faad14' }}>
+                <Statistic 
+                  title="Total GST Collected" 
+                  value={salesSummary.total_tax || 0} 
+                  prefix="₹" 
+                  precision={2}
+                  valueStyle={{ color: '#faad14' }}
+                />
+              </Card>
+            </Col>
+          </Row>
 
-      {/* Revenue Chart Placeholder */}
-      <Card title="Revenue Trend" className="mb-4" style={{
-      borderRadius: 12
-    }}>
-        <div style={{
-        height: 250,
-        background: 'linear-gradient(180deg, #e6f7ff 0%, #fff 100%)',
-        borderRadius: 8,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}>
-          <div className="text-center">
-            <Text type="secondary" style={{
-            fontSize: '1.1rem'
-          }}>📊 Revenue chart will render here</Text>
-            <br /><Text type="secondary" style={{
-            fontSize: '0.85rem'
-          }}>Integrate Recharts or Chart.js for live data</Text>
-          </div>
-        </div>
-      </Card>
+          <Tabs 
+            type="card"
+            items={[
+              {
+                key: 'sales',
+                label: <span><LineChartOutlined /> Sales & Performance</span>,
+                children: (
+                  <div>
+                    <Row gutter={16} className="mb-4">
+                      <Col span={12}>
+                        <Card title="Sales by Category" style={{ borderRadius: 12 }}>
+                          <Table 
+                            columns={[
+                              { title: 'Category', dataIndex: 'category_name', render: v => <Text strong>{v}</Text> },
+                              { title: 'Orders', dataIndex: 'total_orders' },
+                              { title: 'Items Sold', dataIndex: 'items_sold' },
+                              { title: 'Revenue', dataIndex: 'total_revenue', render: v => `₹${v}` }
+                            ]}
+                            dataSource={catBrandData.byCategory.map((c, i) => ({ ...c, key: i }))}
+                            pagination={{ pageSize: 5 }}
+                            size="small"
+                          />
+                        </Card>
+                      </Col>
+                      <Col span={12}>
+                        <Card title="Sales by Brand" style={{ borderRadius: 12 }}>
+                          <Table 
+                            columns={[
+                              { title: 'Brand', dataIndex: 'brand_name', render: v => <Text strong>{v}</Text> },
+                              { title: 'Orders', dataIndex: 'total_orders' },
+                              { title: 'Items Sold', dataIndex: 'items_sold' },
+                              { title: 'Revenue', dataIndex: 'total_revenue', render: v => `₹${v}` }
+                            ]}
+                            dataSource={catBrandData.byBrand.map((b, i) => ({ ...b, key: i }))}
+                            pagination={{ pageSize: 5 }}
+                            size="small"
+                          />
+                        </Card>
+                      </Col>
+                    </Row>
 
-      <Row gutter={16}>
-        {/* Sales by Category */}
-        <Col xs={24} md={14}>
-          <Card title="Sales by Category" style={{
-          borderRadius: 12
-        }}>
-            <Table dataSource={salesByCategory} pagination={false} size="small" columns={[{
-            title: 'Category',
-            dataIndex: 'category'
-          }, {
-            title: 'Orders',
-            dataIndex: 'orders'
-          }, {
-            title: 'Revenue',
-            dataIndex: 'revenue',
-            render: v => <Text strong>₹{v.toLocaleString()}</Text>
-          }, {
-            title: 'Growth',
-            dataIndex: 'growth',
-            render: v => <Tag color={v >= 0 ? 'green' : 'red'}>{v >= 0 ? <ArrowUpOutlined /> : <ArrowDownOutlined />} {Math.abs(v)}%</Tag>
-          }]} />
-          </Card>
-        </Col>
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Card title="🔥 Top Best-Selling Products" style={{ borderRadius: 12 }}>
+                          <Table 
+                            columns={topProductColumns}
+                            dataSource={prodPerfData.topProducts.map((p, i) => ({ ...p, key: i }))}
+                            pagination={false}
+                            size="small"
+                          />
+                        </Card>
+                      </Col>
+                      <Col span={12}>
+                        <Card title="🧊 Slow-Moving / Dead Stock Items" style={{ borderRadius: 12 }}>
+                          <Table 
+                            columns={slowMovingColumns}
+                            dataSource={prodPerfData.slowMoving.map((p, i) => ({ ...p, key: i }))}
+                            pagination={false}
+                            size="small"
+                          />
+                        </Card>
+                      </Col>
+                    </Row>
+                  </div>
+                )
+              },
+              {
+                key: 'inventory',
+                label: <span><WarningOutlined /> Inventory & Stock Valuation</span>,
+                children: (
+                  <div>
+                    <Row gutter={16} className="mb-4">
+                      <Col span={8}>
+                        <Card style={{ borderRadius: 12, background: '#f6ffed', borderColor: '#b7eb8f' }}>
+                          <Statistic title="Total Products in Inventory" value={invData.valuation.total_products || 0} />
+                        </Card>
+                      </Col>
+                      <Col span={8}>
+                        <Card style={{ borderRadius: 12, background: '#e6f7ff', borderColor: '#91d5ff' }}>
+                          <Statistic title="Total Stock Units Available" value={invData.valuation.total_stock_units || 0} suffix="units" />
+                        </Card>
+                      </Col>
+                      <Col span={8}>
+                        <Card style={{ borderRadius: 12, background: '#fff7e6', borderColor: '#ffd591' }}>
+                          <Statistic title="Total Inventory Retail Value" value={invData.valuation.total_selling_value || 0} prefix="₹" precision={2} />
+                        </Card>
+                      </Col>
+                    </Row>
 
-        {/* Top Selling Products */}
-        <Col xs={24} md={10}>
-          <Card title="Top Selling Products" style={{
-          borderRadius: 12
-        }} extra={<Tag color="blue">This Month</Tag>}>
-            <Table dataSource={topProducts} pagination={false} size="small" columns={[{
-            title: '#',
-            render: (_, __, i) => <Tag color="gold">{i + 1}</Tag>
-          }, {
-            title: 'Product',
-            dataIndex: 'product'
-          }, {
-            title: 'Sold',
-            dataIndex: 'sold'
-          }, {
-            title: 'Revenue',
-            dataIndex: 'revenue',
-            render: v => `₹${v.toLocaleString()}`
-          }]} />
-          </Card>
-        </Col>
-      </Row>
-    </div>;
+                    <Card title="⚠️ Low Stock & Reorder Alert List" style={{ borderRadius: 12 }}>
+                      <Table 
+                        columns={[
+                          { title: 'Product', dataIndex: 'product_name', render: v => <Text strong>{v}</Text> },
+                          { title: 'Category', dataIndex: 'category_name', render: v => <Tag>{v || 'N/A'}</Tag> },
+                          { title: 'Available Stock', dataIndex: 'available_qty', render: v => <Tag color="red">{v} left</Tag> },
+                          { title: 'Reserved Stock', dataIndex: 'reserved_qty', render: v => `${v} reserved` },
+                          { title: 'Reorder Threshold', dataIndex: 'low_stock_threshold', render: v => `${v} units` }
+                        ]}
+                        dataSource={invData.lowStock.map((item, idx) => ({ ...item, key: idx }))}
+                        pagination={{ pageSize: 10 }}
+                      />
+                    </Card>
+                  </div>
+                )
+              },
+              {
+                key: 'tax',
+                label: <span><FileTextOutlined /> Tax & GST Filing Summary</span>,
+                children: (
+                  <Card title="GST / HSN-wise Sales & Tax Breakdown" style={{ borderRadius: 12 }}>
+                    <Alert 
+                      message="GST Filing Summary" 
+                      description="Tax collected is automatically aggregated by HSN code and GST percentage rate for filing GSTR-1 & GSTR-3B."
+                      type="info" 
+                      showIcon 
+                      className="mb-3"
+                    />
+                    <Table 
+                      columns={taxColumns}
+                      dataSource={taxData.map((t, idx) => ({ ...t, key: idx }))}
+                      pagination={false}
+                    />
+                  </Card>
+                )
+              },
+              {
+                key: 'margins',
+                label: <span><PercentageOutlined /> Profit & Margin Analysis</span>,
+                children: (
+                  <Card title="Product-wise Profit & Gross Margin Breakdown" style={{ borderRadius: 12 }}>
+                    <Table 
+                      columns={profitColumns}
+                      dataSource={profitData.map((m, idx) => ({ ...m, key: idx }))}
+                      pagination={{ pageSize: 10 }}
+                    />
+                  </Card>
+                )
+              }
+            ]}
+          />
+        </>
+      )}
+    </div>
+  );
 };
+
 export default AdminReports;
