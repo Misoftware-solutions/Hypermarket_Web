@@ -3,12 +3,19 @@ const db = require('../config/db');
 // Get Sales Summary (Sales trends, revenue, order count, AOV, payment methods)
 exports.getSalesSummary = async (req, res) => {
     try {
-        const { period = 'all' } = req.query;
+        const { period = 'all', startDate, endDate } = req.query;
         let dateWhere = '1=1';
-        if (period === '7days') dateWhere = 'created_at >= NOW() - INTERVAL 7 DAY';
-        if (period === '30days') dateWhere = 'created_at >= NOW() - INTERVAL 30 DAY';
-        if (period === '90days') dateWhere = 'created_at >= NOW() - INTERVAL 90 DAY';
-        if (period === '1year') dateWhere = 'created_at >= NOW() - INTERVAL 1 YEAR';
+        if (startDate && endDate) {
+            dateWhere = `created_at >= ${db.escape(startDate + ' 00:00:00')} AND created_at <= ${db.escape(endDate + ' 23:59:59')}`;
+        } else if (period === '7days') {
+            dateWhere = 'created_at >= NOW() - INTERVAL 7 DAY';
+        } else if (period === '30days') {
+            dateWhere = 'created_at >= NOW() - INTERVAL 30 DAY';
+        } else if (period === '90days') {
+            dateWhere = 'created_at >= NOW() - INTERVAL 90 DAY';
+        } else if (period === '1year') {
+            dateWhere = 'created_at >= NOW() - INTERVAL 1 YEAR';
+        }
 
         // Overall stats
         const [overall] = await db.query(`

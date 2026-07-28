@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Card, Row, Col, Typography, Table, Tag, Tabs, Select, Statistic, Spin, Alert, Progress } from 'antd';
-import { DollarOutlined, ShoppingCartOutlined, LineChartOutlined, PercentageOutlined, FileTextOutlined, WarningOutlined, UserOutlined, TagOutlined, CarOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Typography, Table, Tag, Tabs, Select, Statistic, Spin, Alert, Progress, DatePicker, Button, Space } from 'antd';
+import { 
+  DollarOutlined, 
+  ShoppingCartOutlined, 
+  LineChartOutlined, 
+  PercentageOutlined, 
+  FileTextOutlined, 
+  WarningOutlined, 
+  UserOutlined, 
+  TagOutlined, 
+  CarOutlined, 
+  DownloadOutlined,
+  CalendarOutlined
+} from '@ant-design/icons';
 import { 
   getSalesReport, 
   getCategoryBrandReport, 
@@ -15,10 +27,12 @@ import {
 } from '../../services/api';
 
 const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
 
 const AdminReports = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('all');
+  const [dateRange, setDateRange] = useState(null);
   const [salesData, setSalesData] = useState(null);
   const [catBrandData, setCatBrandData] = useState({ byCategory: [], byBrand: [] });
   const [prodPerfData, setProdPerfData] = useState({ topProducts: [], slowMoving: [] });
@@ -32,13 +46,21 @@ const AdminReports = () => {
 
   useEffect(() => {
     fetchAllReports();
-  }, [period]);
+  }, [period, dateRange]);
 
   const fetchAllReports = async () => {
     setLoading(true);
     try {
+      let params = { period };
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        params = {
+          startDate: dateRange[0].format('YYYY-MM-DD'),
+          endDate: dateRange[1].format('YYYY-MM-DD')
+        };
+      }
+
       const [salesRes, catBrandRes, prodPerfRes, invRes, taxRes, profitRes, custRes, cartRes, couponRes, opRes] = await Promise.all([
-        getSalesReport(period),
+        getSalesReport(params),
         getCategoryBrandReport(),
         getProductPerformanceReport(),
         getInventoryReportData(),
@@ -67,7 +89,57 @@ const AdminReports = () => {
     }
   };
 
+  const exportCSV = (data, filename = 'report.csv') => {
+    if (!data || !data.length) return;
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const salesSummary = salesData?.summary || {};
+  const salesTrend = salesData?.salesTrend || [];
+
+  // SVG Bar Chart Component for Graphical Representation
+  const BarChart = ({ data, xKey, yKey, label, color = '#1890ff' }) => {
+    if (!data || !data.length) return <Text type="secondary">No graphical data available</Text>;
+    const maxVal = Math.max(...data.map(d => Number(d[yKey]) || 0), 1);
+    
+    return (
+      <div style={{ background: '#fafafa', padding: '16px', borderRadius: '12px' }}>
+        <Text strong className="d-block mb-3">{label}</Text>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px', height: '180px', paddingTop: '20px' }}>
+          {data.map((item, idx) => {
+            const val = Number(item[yKey]) || 0;
+            const heightPct = Math.max(10, Math.round((val / maxVal) * 100));
+            const displayLabel = String(item[xKey] || '').substring(0, 10);
+            return (
+              <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                <Text style={{ fontSize: '11px', fontWeight: 'bold', color }}>₹{val}</Text>
+                <div 
+                  style={{ 
+                    width: '100%', 
+                    maxWidth: '40px', 
+                    height: `${heightPct}%`, 
+                    backgroundColor: color, 
+                    borderRadius: '6px 6px 0 0',
+                    transition: 'all 0.3s ease' 
+                  }} 
+                />
+                <Text style={{ fontSize: '10px', marginTop: '6px', color: '#595959' }}>{displayLabel}</Text>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   const topProductColumns = [
     { title: 'Product', dataIndex: 'product_name', key: 'product_name', render: v => <Text strong>{v}</Text> },
@@ -105,18 +177,36 @@ const AdminReports = () => {
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
           <Title level={3} style={{ margin: 0 }}>Business Reports & ERP Analytics</Title>
           <Text type="secondary">Real-time financial, inventory, sales, customer, marketing, and logistics analytics</Text>
         </div>
-        <Select value={period} onChange={setPeriod} style={{ width: 160 }}>
-          <Select.Option value="all">All Time</Select.Option>
-          <Select.Option value="7days">Last 7 Days</Select.Option>
-          <Select.Option value="30days">Last 30 Days</Select.Option>
-          <Select.Option value="90days">Last 90 Days</Select.Option>
-          <Select.Option value="1year">Last 1 Year</Select.Option>
-        </Select>
+        
+        {/* Date Range Selector & Export Controls */}
+        <Space wrap>
+          <RangePicker 
+            onChange={dates => {
+              setDateRange(dates);
+              if (dates) setPeriod('custom');
+            }} 
+          />
+          <Select value={period} onChange={p => { setPeriod(p); setDateRange(null); }} style={{ width: 140 }}>
+            <Select.Option value="all">All Time</Select.Option>
+            <Select.Option value="7days">Last 7 Days</Select.Option>
+            <Select.Option value="30days">Last 30 Days</Select.Option>
+            <Select.Option value="90days">Last 90 Days</Select.Option>
+            <Select.Option value="1year">Last 1 Year</Select.Option>
+          </Select>
+          <Button 
+            type="primary" 
+            icon={<DownloadOutlined />} 
+            style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+            onClick={() => exportCSV(prodPerfData.topProducts, 'sales_performance_report.csv')}
+          >
+            Export CSV
+          </Button>
+        </Space>
       </div>
 
       {loading ? (
@@ -178,6 +268,19 @@ const AdminReports = () => {
                 label: <span><LineChartOutlined /> Sales & Performance</span>,
                 children: (
                   <div>
+                    <Row gutter={16} className="mb-4">
+                      <Col span={12}>
+                        <Card title="📈 Daily Sales Revenue Trend (Graphical)" style={{ borderRadius: 12 }}>
+                          <BarChart data={salesTrend} xKey="date" yKey="revenue" label="Revenue over selected date range (₹)" color="#1890ff" />
+                        </Card>
+                      </Col>
+                      <Col span={12}>
+                        <Card title="📊 Category Sales Performance (Graphical)" style={{ borderRadius: 12 }}>
+                          <BarChart data={catBrandData.byCategory} xKey="category_name" yKey="total_revenue" label="Revenue by Category (₹)" color="#52c41a" />
+                        </Card>
+                      </Col>
+                    </Row>
+
                     <Row gutter={16} className="mb-4">
                       <Col span={12}>
                         <Card title="Sales by Category" style={{ borderRadius: 12 }}>

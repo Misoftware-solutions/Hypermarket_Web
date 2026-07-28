@@ -103,7 +103,7 @@ export const getSettings = () => API.get('/settings');
 export const updateSettings = data => API.put('/settings', data);
 
 // Reports
-export const getSalesReport = period => API.get('/reports/sales-summary', { params: { period } });
+export const getSalesReport = params => API.get('/reports/sales-summary', { params: typeof params === 'string' ? { period: params } : params });
 export const getCategoryBrandReport = () => API.get('/reports/category-brand');
 export const getProductPerformanceReport = () => API.get('/reports/product-performance');
 export const getInventoryReportData = () => API.get('/reports/inventory-health');
