@@ -83,9 +83,7 @@ export const uploadBannerImage = data => API.post('/banners/upload', data);
 export const getInventory = params => API.get('/inventory', {
   params
 });
-export const updateStock = (productId, qty) => API.put(`/inventory/${productId}`, {
-  qty
-});
+export const updateStock = (id, qty, reason) => API.put(`/inventory/${id}`, { qty, reason });
 
 // Customers (admin & customer profile)
 export const getCustomers = params => API.get('/customers', {

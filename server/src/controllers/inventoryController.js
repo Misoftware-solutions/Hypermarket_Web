@@ -36,13 +36,27 @@ exports.getInventory = async (req, res) => {
 
 exports.updateStock = async (req, res) => {
     try {
-        const { qty } = req.body;
-        const [existing] = await db.query('SELECT * FROM inventory WHERE product_id = ?', [req.params.id]);
+        const { qty, reason = 'Manual Stock Adjustment' } = req.body;
+        const [existing] = await db.query('SELECT available_qty FROM inventory WHERE product_id = ?', [req.params.id]);
+        const oldQty = existing.length > 0 ? Number(existing[0].available_qty) : 0;
+        const diff = Number(qty) - oldQty;
+
         if (existing.length === 0) {
             await db.query('INSERT INTO inventory (product_id, available_qty) VALUES (?, ?)', [req.params.id, qty]);
         } else {
             await db.query('UPDATE inventory SET available_qty = ? WHERE product_id = ?', [qty, req.params.id]);
         }
-        res.json({ message: 'Stock updated' });
+
+        // Audit log entry to prevent forged data
+        try {
+            await db.query(
+                `INSERT INTO inventory_logs (product_id, change_type, qty_change, notes) VALUES (?, 'adjustment', ?, ?)`,
+                [req.params.id, diff, `Manual adjustment from ${oldQty} to ${qty} (${reason})`]
+            );
+        } catch (e) {
+            // Ignore if log table not present
+        }
+
+        res.json({ message: 'Stock updated', previous_qty: oldQty, new_qty: qty });
     } catch (err) { res.status(500).json({ error: err.message }); }
 };

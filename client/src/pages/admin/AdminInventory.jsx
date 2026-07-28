@@ -108,11 +108,16 @@ const AdminInventory = () => {
     }
   };
 
+  const [adjustMode, setAdjustMode] = useState('add');
+  const [adjustReason, setAdjustReason] = useState('Stock Count Verification');
+
   const handleUpdateStock = async () => {
     try {
-      await updateStock(updateModal.id, newQty);
-      message.success('Stock updated successfully!');
+      const targetQty = adjustMode === 'add' ? Number(updateModal.stock || 0) + Number(newQty || 0) : Number(newQty || 0);
+      await updateStock(updateModal.id, targetQty, adjustReason);
+      message.success(`Stock adjusted! New Total: ${targetQty} units`);
       setUpdateModal({ open: false, id: 0, name: '', stock: 0 });
+      setNewQty(0);
       fetchInventoryData();
     } catch {
       message.error('Failed to update stock');
@@ -557,14 +562,38 @@ const AdminInventory = () => {
       />
 
       {/* Update Stock Modal */}
-      <Modal title={`Update Stock — ${updateModal.name}`} open={updateModal.open} onCancel={() => setUpdateModal({ open: false, id: 0, name: '', stock: 0 })} onOk={handleUpdateStock}>
-        <div className="mb-3"><Text>Current Stock: <Text strong>{updateModal.stock}</Text></Text></div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <InputNumber className="w-100" size="large" min={0} precision={0} step={1} value={newQty} onChange={v => setNewQty(v || 0)} addonBefore="New Qty" />
-          <Tooltip title="Specify the absolute total quantity of product units currently available in stock (integers only)">
-            <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'pointer' }} />
-          </Tooltip>
+      <Modal title={`Stock Adjustment — ${updateModal.name}`} open={updateModal.open} onCancel={() => setUpdateModal({ open: false, id: 0, name: '', stock: 0 })} onOk={handleUpdateStock}>
+        <div className="mb-3"><Text>Current Stock: <Text strong style={{ color: '#1890ff', fontSize: '1.1rem' }}>{updateModal.stock} units</Text></Text></div>
+        
+        <div className="mb-3">
+          <Text strong className="d-block mb-1">Adjustment Mode:</Text>
+          <Select value={adjustMode} onChange={setAdjustMode} style={{ width: '100%' }}>
+            <Select.Option value="add">➕ Add Inward Units (Current + Qty)</Select.Option>
+            <Select.Option value="set">✏️ Set Absolute Quantity (Override)</Select.Option>
+          </Select>
         </div>
+
+        <div className="mb-3">
+          <InputNumber 
+            className="w-100" 
+            size="large" 
+            min={0} 
+            precision={0} 
+            step={1} 
+            value={newQty} 
+            onChange={v => setNewQty(v || 0)} 
+            addonBefore={adjustMode === 'add' ? 'Units to Add' : 'New Total Stock'} 
+          />
+        </div>
+
+        <div className="mb-2">
+          <Text type="secondary">Audit Reason Note:</Text>
+          <Input placeholder="Reason e.g. Stock Count Verification" value={adjustReason} onChange={e => setAdjustReason(e.target.value)} style={{ marginTop: '4px' }} />
+        </div>
+
+        {adjustMode === 'add' && (
+          <Alert message={`Resulting Stock: ${Number(updateModal.stock || 0) + Number(newQty || 0)} units`} type="info" showIcon className="mt-3" />
+        )}
       </Modal>
 
       {/* Add Supplier Modal */}
