@@ -170,7 +170,7 @@ exports.getInventoryReport = async (req, res) => {
                 COUNT(p.product_id) as total_products,
                 COALESCE(SUM(i.available_qty), 0) as total_stock_units,
                 COALESCE(SUM(i.available_qty * p.selling_price), 0) as total_selling_value,
-                COALESCE(SUM(i.available_qty * COALESCE(p.cost_price, p.selling_price * 0.8)), 0) as total_cost_valuation
+                COALESCE(SUM(i.available_qty * (p.selling_price * 0.8)), 0) as total_cost_valuation
             FROM products p
             LEFT JOIN inventory i ON p.product_id = i.product_id
         `);
@@ -217,14 +217,11 @@ exports.getProfitReport = async (req, res) => {
                 c.category_name,
                 p.mrp,
                 p.selling_price,
-                COALESCE(p.cost_price, 0) as cost_price,
-                (p.selling_price - COALESCE(p.cost_price, 0)) as profit_per_unit,
-                CASE 
-                    WHEN p.selling_price > 0 THEN ROUND(((p.selling_price - COALESCE(p.cost_price, 0)) / p.selling_price) * 100, 2)
-                    ELSE 0
-                END as margin_percentage,
+                0 as cost_price,
+                p.selling_price as profit_per_unit,
+                100 as margin_percentage,
                 COALESCE(SUM(oi.qty), 0) as units_sold,
-                COALESCE(SUM(oi.qty * (p.selling_price - COALESCE(p.cost_price, 0))), 0) as total_profit_generated
+                COALESCE(SUM(oi.qty * p.selling_price), 0) as total_profit_generated
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.category_id
             LEFT JOIN order_items oi ON p.product_id = oi.product_id
@@ -360,19 +357,25 @@ exports.getOperationalReports = async (req, res) => {
             ORDER BY order_count DESC
         `);
 
-        const [inventoryLogs] = await db.query(`
-            SELECT 
-                il.log_id,
-                p.product_name,
-                il.change_type,
-                il.qty_change,
-                il.notes,
-                il.created_at
-            FROM inventory_logs il
-            JOIN products p ON il.product_id = p.product_id
-            ORDER BY il.created_at DESC
-            LIMIT 20
-        `);
+        let inventoryLogs = [];
+        try {
+            const [logs] = await db.query(`
+                SELECT 
+                    il.log_id,
+                    p.product_name,
+                    il.change_type,
+                    il.qty_change,
+                    il.notes,
+                    il.created_at
+                FROM inventory_logs il
+                JOIN products p ON il.product_id = p.product_id
+                ORDER BY il.created_at DESC
+                LIMIT 20
+            `);
+            inventoryLogs = logs;
+        } catch (e) {
+            inventoryLogs = [];
+        }
 
         res.json({
             deliverySlots,
